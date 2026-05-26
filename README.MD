@@ -134,17 +134,23 @@ This methodology ensures maximum fidelity and statistical reliability in all gen
 
 # Dataset Characteristics
 
-The primary dataset incorporates an array of historical macroeconomic indicators, including:
+The programmatic architecture currently ingests a core set of primary macroeconomic indicators to establish the baseline predictive matrix:
 
-- Consumer Price Index (CPI)
-- Wholesale Price Index (WPI)
-- Gross Domestic Product (GDP) Trajectories
-- Benchmark Interest Rates
+### Primary Core Indicators
+- Consumer Price Index (CPI) [Monthly]
+- Wholesale Price Index (WPI) [Monthly]
+- Gross Domestic Product (GDP) Trajectories [Annual / Proxies]
+- Benchmark Interest Rates [Monthly]
+- Foreign Exchange Variations (USD/INR) [Daily]
+
+### Derived Target Variable
+- **Inflation Rate:** Dynamically calculated via Year-over-Year (YoY) percentage change derivations against the baseline CPI index data.
+
+### Phase II Extensibility (Planned Expansion)
+Future iterations of the model will ingest extended external datasets localized for robust anomaly detection:
 - Aggregate Unemployment Rates
-- Foreign Exchange Variations
-- Crude Oil and Commodity Valuations
-- Monetary Supply Aggregates
-- Historical Inflation Rate Records
+- Crude Oil and Commodity Valuations (Brent/WTI)
+- Monetary Supply Aggregates (M1/M2)
 
 These metrics function as foundational input features for the systemic predictive modeling and temporal forecasting pipeline.
 
@@ -153,16 +159,15 @@ These metrics function as foundational input features for the systemic predictiv
 # Project Workflow
 
 ## 1. Data Aggregation
-
 Systematic collection of historical macroeconomic and inflation-related datasets from authoritative public and institutional financial sources.
 
 ## 2. Data Preprocessing Pipeline
-
-- Mitigation and imputation of null values
-- Comprehensive data sanitization
-- Algorithmic outlier detection and handling
-- Statistical data normalization
-- Predictive feature selection strategies
+- **Time-Series Frequency Alignment:** Algorithmic downsampling of Daily data (Exchange Rates) and interpolation of Annual data (GDP) to synthesize a unified Monthly frequency matrix.
+- Mitigation and imputation of null values.
+- Comprehensive data sanitization.
+- Algorithmic outlier detection and handling.
+- Statistical data normalization.
+- Predictive feature selection strategies.
 
 ## 3. Exploratory Data Analysis (EDA)
 
@@ -273,19 +278,19 @@ Serves as an empirical foundation for advanced economic and temporal forecasting
 
 # Future Development Horizons
 
-- Integration of continuous, real-time macroeconomic datasets
-- Implementation of dynamic, interactive forecasting suites
-- Granular, region-specific and localized inflation metrics
-- Application of Advanced Deep Learning topologies (e.g., LSTM, GRU architectures)
-- Fully automated, comprehensive report synthesis
-- Expansion into cross-border, multi-national macroeconomic modeling
+- **Continuous Integration:** Integration of live, real-time macroeconomic datasets via API pipelines.
+- **Hybrid Architectures:** Implementation of dual-model ensembles, matching statistical baseline algorithms like ARIMA with advanced non-linear deep learning (e.g., ARIMA-LSTM).
+- **Time-Series Transformers:** Application of state-of-the-art Temporal Fusion Transformers (TFT) equipped with attention mechanics for superior multi-horizon extrapolation.
+- **Alternative Behavioral Data:** Integration of Natural Language Processing (NLP) models to ingest and execute sentiment analysis on Central Bank minutes and macroeconomic news indicators.
+- **Interactive Dashboards:** Implementation of dynamic, interactive forecasting suites.
+- **Granularity:** Region-specific and localized inflation metrics.
+- **Scale:** Expansion into cross-border, multi-national macroeconomic modeling.
 
 ---
 
 # Research Contributors
 
-- Dhanush Pillay
-- Shubhangini Dixit
+- Dhanush Pillay & Shubhangini Dixit
 
 ---
 
