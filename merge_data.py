@@ -6,7 +6,7 @@ DATA_FOLDER = "data"
 
 def merge_all():
     """Merge all CSV files into a single dataset with aligned dates."""
-    files = [f for f in os.listdir(DATA_FOLDER) if f.endswith(".csv")]
+    files = [f for f in os.listdir(DATA_FOLDER) if f.endswith(".csv") and f != "inflation_dataset.csv"]
 
     merged_df = None
 
@@ -19,9 +19,9 @@ def merge_all():
         # Rename date column
         df = df.rename(columns={"observation_date": "Date"})
 
-        # Keep only Date + value column
-        value_col = [col for col in df.columns if col != "Date"][0]
-        df = df[["Date", value_col]]
+        # Keep Date and all value columns
+        value_cols = [col for col in df.columns if col != "Date"]
+        df = df[["Date"] + value_cols]
 
         if merged_df is None:
             merged_df = df
