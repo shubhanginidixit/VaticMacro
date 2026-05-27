@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-def load_and_clean_data(path, start_date='2000-01-01', end_date='2022-12-31'):
+def load_and_clean_data(path, start_date='2000-01-01', end_date='2030-12-31'):
     """
     Load and clean data from CSV files with various formats.
     Handles multiple column naming conventions and date formats.
@@ -57,7 +57,7 @@ def load_and_clean_data(path, start_date='2000-01-01', end_date='2022-12-31'):
     return df
 
 
-def _handle_pivot_format(df, filename, start_date='2000-01-01', end_date='2022-12-31'):
+def _handle_pivot_format(df, filename, start_date='2000-01-01', end_date='2030-12-31'):
     """
     Handle pivot-formatted data (like India basket crude oil).
     Converts from wide format to long format.
@@ -83,7 +83,7 @@ def _handle_pivot_format(df, filename, start_date='2000-01-01', end_date='2022-1
     return melted
 
 
-def _handle_year_columns_format(df, filename, start_date='2000-01-01', end_date='2022-12-31'):
+def _handle_year_columns_format(df, filename, start_date='2000-01-01', end_date='2030-12-31'):
     """
     Handle data with years as columns (like Unemployment Rate Annually).
     Converts from wide format to long format.
