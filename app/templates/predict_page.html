@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VaticMacro - Predict</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+</head>
+<body class="bg-[#0e141a] text-[#dde3eb] antialiased flex min-h-screen font-['Inter']">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[220px] border-r border-[#424754] bg-[#080f14] flex flex-col py-6 z-20">
+<div class="px-6 mb-8">
+<h1 class="font-semibold text-[#dde3eb]">VaticMacro</h1>
+<p class="text-sm text-[#8c909f] mt-1">Institutional Analytics</p>
+</div>
+<ul class="flex-1 space-y-1 px-3">
+<li><a href="/" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">dashboard</span><span class="text-sm">Dashboard</span></a></li>
+<li><a href="/analysis" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">analytics</span><span class="text-sm">Analysis</span></a></li>
+<li><a href="/models" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">hub</span><span class="text-sm">Models</span></a></li>
+<li><a href="/predict" class="text-[#adc6ff] border-l-[3px] border-[#adc6ff] font-semibold flex items-center gap-3 px-4 py-3"><span class="material-symbols-outlined">query_stats</span><span class="text-sm">Predict</span></a></li>
+<li><a href="/forecast" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">timeline</span><span class="text-sm">Forecast</span></a></li>
+</ul>
+<div class="px-6 mt-auto">
+<p class="text-xs text-[#8c909f]">v1.0 • IEEE 2025</p>
+</div>
+</nav>
+<!-- Main Content -->
+<div class="ml-[220px] flex-1 flex flex-col w-[calc(100%-220px)]">
+<header class="border-b border-[#424754] flex justify-between items-center h-16 px-6">
+<span class="text-[#dde3eb]">Dashboard &gt; <span class="font-medium">Predict</span></span>
+</header>
+<main class="flex-1 p-8 overflow-y-auto">
+<div class="grid grid-cols-2 gap-8 max-h-full">
+<!-- Left Panel: Input Form -->
+<div class="bg-[#1a2026] p-6 rounded border border-[#2a2d3a] h-fit">
+<h2 class="text-2xl font-bold mb-2">Scenario Builder</h2>
+<p class="text-sm text-[#8c909f] mb-6">Adjust economic indicators to predict inflation</p>
+<!-- Preset Buttons -->
+<div class="mb-6">
+<h3 class="text-xs text-[#8c909f] uppercase tracking-wider mb-3">Preset Scenarios</h3>
+<div class="flex flex-col gap-2">
+<button class="bg-[#2a2d3a] hover:bg-[#242b31] px-3 py-2 text-sm rounded transition">Current Economy</button>
+<button class="border border-[#2a2d3a] hover:bg-[#2a2d3a] px-3 py-2 text-sm rounded transition">Oil Shock</button>
+<button class="border border-[#2a2d3a] hover:bg-[#2a2d3a] px-3 py-2 text-sm rounded transition">Rate Hike</button>
+</div>
+</div>
+<!-- Input Form -->
+<form class="space-y-4" method="POST" action="/predict">
+<div class="flex items-center justify-between">
+<label class="text-sm text-[#8c909f]">WPI Index</label>
+<input type="number" name="wpi" step="0.1" value="136.30" class="bg-[#141620] border border-[#2a2d3a] rounded px-3 py-2 text-right text-[#dde3eb] w-24 focus:border-[#adc6ff]"/>
+</div>
+<div class="flex items-center justify-between">
+<label class="text-sm text-[#8c909f]">Interest Rate (%)</label>
+<input type="number" name="interest_rate" step="0.05" value="5.15" class="bg-[#141620] border border-[#2a2d3a] rounded px-3 py-2 text-right text-[#dde3eb] w-24 focus:border-[#adc6ff]"/>
+</div>
+<div class="flex items-center justify-between">
+<label class="text-sm text-[#8c909f]">USD/INR Rate</label>
+<input type="number" name="usdinr" step="0.1" value="83.42" class="bg-[#141620] border border-[#2a2d3a] rounded px-3 py-2 text-right text-[#dde3eb] w-24 focus:border-[#adc6ff]"/>
+</div>
+<div class="flex items-center justify-between">
+<label class="text-sm text-[#8c909f]">Brent Crude ($/bbl)</label>
+<input type="number" name="brent" step="0.5" value="80.92" class="bg-[#141620] border border-[#2a2d3a] rounded px-3 py-2 text-right text-[#dde3eb] w-24 focus:border-[#adc6ff]"/>
+</div>
+<button type="submit" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white py-3 rounded font-semibold mt-8 flex items-center justify-center gap-2 transition">
+<span class="material-symbols-outlined">psychology</span>Predict Inflation
+</button>
+</form>
+</div>
+<!-- Right Panel: Results -->
+<div class="bg-[#1a2026] p-8 rounded border border-[#2a2d3a]">
+<h2 class="text-xs text-[#8c909f] uppercase tracking-wider mb-4">Model Output</h2>
+<div class="mb-8">
+<p class="text-sm text-[#8c909f] mb-2">Predicted Inflation:</p>
+<p class="text-6xl font-bold text-[#dde3eb]">5.21%</p>
+</div>
+<!-- Gauge -->
+<div class="mb-8">
+<div class="flex justify-between text-xs text-[#8c909f] mb-2">
+<span>0%</span><span>Target Band (2-6%)</span><span>10%+</span>
+</div>
+<div class="h-6 bg-[#0e141a] rounded flex overflow-hidden border border-[#2a2d3a]">
+<div class="w-2/5 bg-[#4edea3]/20"></div>
+<div class="w-1/5 bg-[#fbbf24]/20"></div>
+<div class="w-2/5 bg-[#ff6b6b]/20"></div>
+<div class="absolute w-1 h-6 bg-[#dde3eb] left-[52%]" style="margin-left: -2px;"></div>
+</div>
+</div>
+<!-- Interpretation -->
+<div class="bg-[#141620] border border-l-4 border-l-[#fbbf24] p-4 rounded">
+<h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">psychology_alt</span>Synthesis
+</h3>
+<p class="text-sm text-[#8c909f]">
+At current Brent Crude levels and with RBI's rate at 5.15%, the model predicts inflation <strong class="text-[#fbbf24]">moderately above</strong> the RBI target band of 2-6%.
+</p>
+</div>
+<div class="mt-8 pt-4 border-t border-[#2a2d3a] flex justify-between text-xs text-[#8c909f]">
+<span>Model Used: XGBoost</span>
+<span>Accuracy (R²) = <span class="text-[#4edea3] font-medium">0.94</span></span>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body>
+</html>

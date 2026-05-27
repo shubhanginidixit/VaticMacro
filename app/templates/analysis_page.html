@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VaticMacro - Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+</head>
+<body class="bg-[#0e141a] text-[#dde3eb] antialiased flex min-h-screen font-['Inter']">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[220px] border-r border-[#424754] bg-[#080f14] flex flex-col py-6 z-20">
+<div class="px-6 mb-8">
+<h1 class="font-semibold text-[#dde3eb]">VaticMacro</h1>
+<p class="text-sm text-[#8c909f] mt-1">Institutional Analytics</p>
+</div>
+<ul class="flex-1 space-y-1 px-3">
+<li><a href="/" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">dashboard</span><span class="text-sm">Dashboard</span></a></li>
+<li><a href="/analysis" class="text-[#adc6ff] border-l-[3px] border-[#adc6ff] font-semibold flex items-center gap-3 px-4 py-3"><span class="material-symbols-outlined">analytics</span><span class="text-sm">Analysis</span></a></li>
+<li><a href="/models" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">hub</span><span class="text-sm">Models</span></a></li>
+<li><a href="/predict" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">query_stats</span><span class="text-sm">Predict</span></a></li>
+<li><a href="/forecast" class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-3 px-4 py-3 transition"><span class="material-symbols-outlined">timeline</span><span class="text-sm">Forecast</span></a></li>
+</ul>
+<div class="px-6 mt-auto">
+<p class="text-xs text-[#8c909f]">v1.0 • IEEE 2025</p>
+</div>
+</nav>
+<!-- Main Content -->
+<div class="ml-[220px] flex-1 flex flex-col w-[calc(100%-220px)]">
+<header class="border-b border-[#424754] flex justify-between items-center h-16 px-6">
+<span class="text-[#dde3eb]">Dashboard &gt; <span class="font-medium">Analysis</span></span>
+<button class="text-[#8c909f] hover:text-[#adc6ff] flex items-center gap-2 text-sm border border-[#424754] rounded px-3 py-1.5"><span class="material-symbols-outlined text-[18px]">calendar_today</span>Date Range</button>
+</header>
+<main class="flex-1 p-8 overflow-y-auto">
+<div class="mb-6">
+<h1 class="text-3xl font-bold text-[#dde3eb] mb-2">Exploratory Analysis</h1>
+<p class="text-sm text-[#8c909f]">Statistical relationships and patterns across Indian macroeconomic indicators</p>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<!-- Correlation Matrix -->
+<div class="col-span-2 bg-[#1a2026] p-6 rounded border border-[#2a2d3a]">
+<h2 class="text-xs text-[#8c909f] uppercase tracking-wider mb-4">Feature Correlation Matrix</h2>
+<div class="overflow-auto">
+<table class="w-full text-xs text-[#dde3eb]">
+<tr>
+<td class="p-2">CPI</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">0.92</td><td class="p-2 text-center">0.65</td><td class="p-2 text-center">-0.45</td><td class="p-2 text-center">0.23</td>
+</tr>
+<tr class="bg-[#242b31]">
+<td class="p-2">WPI</td><td class="p-2 text-center">0.92</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">0.58</td><td class="p-2 text-center">-0.34</td><td class="p-2 text-center">0.18</td>
+</tr>
+<tr>
+<td class="p-2">Interest Rate</td><td class="p-2 text-center">0.65</td><td class="p-2 text-center">0.58</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">-0.82</td><td class="p-2 text-center">-0.15</td>
+</tr>
+<tr class="bg-[#242b31]">
+<td class="p-2">GDP Proxy</td><td class="p-2 text-center">-0.45</td><td class="p-2 text-center">-0.34</td><td class="p-2 text-center">-0.82</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">-0.05</td>
+</tr>
+</table>
+</div>
+</div>
+<!-- Key Findings -->
+<div class="col-span-1 bg-[#1a2026] p-6 rounded border border-[#2a2d3a]">
+<h2 class="text-xs text-[#8c909f] uppercase tracking-wider mb-4">Key Findings</h2>
+<ul class="space-y-3 text-sm">
+<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>CPI and WPI are strongly correlated (r = 0.92)</span></li>
+<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>Interest Rates show inverse relationship with GDP (r = -0.82)</span></li>
+<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>Brent Crude shows moderate correlation with inflation</span></li>
+</ul>
+</div>
+</div>
+</main>
+</div>
+</body>
+</html>
