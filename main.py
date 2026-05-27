@@ -8,10 +8,10 @@ df = load_and_clean_data("data/inflation_dataset.csv")
 # Feature engineering
 df = create_features(df)
 
-print("📊 Data ready:")
+print("Data ready:")
 print(df.head())
 
 # Train model
 model = train(df)
 
-print("✅ Model training completed")
+print("Model training completed")
