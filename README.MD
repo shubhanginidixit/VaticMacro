@@ -1,10 +1,10 @@
 # VaticMacro
 
-## Inflation Prediction and Economic Trend Forecasting
+## Indian Macroeconomic Inflation Prediction and Trend Forecasting
 
-VaticMacro is an advanced machine learning framework designed for economic forecasting, specifically targeting inflation trends through the rigorous analysis of historical economic indicators and prevailing market dynamics. The system employs complex data analytics, statistical modeling, and predictive forecasting techniques to yield precise inflation estimates and actionable economic insights.
+VaticMacro is an advanced machine learning framework explicitly architected for the Indian economy. It is designed to forecast inflation trends through the rigorous analysis of domestic macroeconomic indicators, global market dynamics, and regional policy metrics. The system employs complex data analytics, statistical modeling, and predictive forecasting techniques to yield precise inflation estimates and actionable economic insights tailored to the Indian subcontinent.
 
-This platform empowers policy-makers, researchers, institutional investors, and financial analysts to comprehensively evaluate inflation paradigms, assess macroeconomic risks, and execute data-driven strategic decisions based on empirical economic projections.
+This platform empowers domestic policy-makers, researchers, institutional investors, and financial analysts to comprehensively evaluate regional inflation paradigms, assess macroeconomic risks within emerging markets, and execute data-driven strategic decisions based on empirical economic projections.
 
 ---
 
@@ -137,20 +137,21 @@ This methodology ensures maximum fidelity and statistical reliability in all gen
 The programmatic architecture currently ingests a core set of primary macroeconomic indicators to establish the baseline predictive matrix:
 
 ### Primary Core Indicators
-- Consumer Price Index (CPI) [Monthly]
-- Wholesale Price Index (WPI) [Monthly]
-- Gross Domestic Product (GDP) Trajectories [Annual / Proxies]
-- Benchmark Interest Rates [Monthly]
+- Indian Consumer Price Index (CPI) [Monthly]
+- Indian Wholesale Price Index (WPI) [Monthly]
+- Indian Gross Domestic Product (GDP) Trajectories [Annual / Proxies]
+- Reserve Bank of India (RBI) Benchmark Interest Rates [Monthly]
 - Foreign Exchange Variations (USD/INR) [Daily]
+- Global Energy Benchmarks (Brent Crude Oil) [Daily]
 
 ### Derived Target Variable
-- **Inflation Rate:** Dynamically calculated via Year-over-Year (YoY) percentage change derivations against the baseline CPI index data.
+- **Inflation Rate:** Dynamically calculated via Year-over-Year (YoY) percentage change derivations against the baseline Indian CPI index data.
 
 ### Phase II Extensibility (Planned Expansion)
-Future iterations of the model will ingest extended external datasets localized for robust anomaly detection:
-- Aggregate Unemployment Rates
-- Crude Oil and Commodity Valuations (Brent/WTI)
-- Monetary Supply Aggregates (M1/M2)
+Future iterations of the model will ingest extended external datasets localized for robust anomaly detection within the Indian economic framework:
+- Aggregate National Unemployment Rates
+- Indian Basket Crude Oil Valuations
+- Domestic Monetary Supply Aggregates (M1/M3)
 
 These metrics function as foundational input features for the systemic predictive modeling and temporal forecasting pipeline.
 
@@ -212,33 +213,32 @@ Generate future inflation forecasts and economic trend predictions.
 VaticMacro/
 │
 ├── data/
-│   ├── inflation_dataset.csv
-│
-├── notebooks/
-│   ├── EDA.ipynb
-│   ├── Model_Training.ipynb
-│   ├── Forecasting.ipynb
+│   ├── [Raw CSV datasets...]
+│   └── inflation_dataset.csv (Merged output)
 │
 ├── models/
-│   ├── linear_regression.pkl
-│   ├── random_forest.pkl
-│   ├── xgboost.pkl
-│
-├── visualizations/
-│   ├── inflation_trends.png
-│   ├── correlation_heatmap.png
-│   └── forecast_results.png
+│   ├── best_model.pkl (Dynamically saved)
+│   └── metrics.json
 │
 ├── src/
-│   ├── preprocessing.py
-│   ├── feature_engineering.py
-│   ├── train_model.py
-│   ├── evaluate_model.py
-│   └── predict.py
+│   ├── preprocessing.py (Cleans & standardizes data formats)
+│   ├── feature_engineering.py (Generates lags & rolling averages)
+│   └── train_model.py (Trains multiple models and selects best)
 │
+├── app/
+│   └── templates/
+│       ├── dashboard.html
+│       ├── analysis.html
+│       ├── models.html
+│       ├── predict.html
+│       └── [Forecast/About pages...]
+│
+├── .venv/ (Local Python Environment)
 ├── requirements.txt
-├── README.md
-└── main.py
+├── merge_data.py (Master script to build dataset)
+├── app.py (Upcoming Flask Web Application)
+├── main.py (Background training trigger)
+└── README.md
 ```
 
 ---
@@ -297,13 +297,3 @@ Serves as an empirical foundation for advanced economic and temporal forecasting
 # Licensing
 
 This repository and framework are published explicitly for academic, research, and non-commercial educational purposes.
-
-
-
-
-
-
-
-
-#   T e s t   c o m m i t   w i t h   c o r r e c t   a u t h o r   n a m e  
- 
