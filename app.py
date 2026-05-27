@@ -336,6 +336,27 @@ def about():
         return render_template('about.html')
     return "<h1 style='color:white; font-family:sans-serif; text-align:center; padding-top: 50px;'>About Page Placeholder</h1><p style='color:white; text-align:center;'>Paste the HTML when ready!</p>"
 
+# Material Design 3 UI Routes
+@app.route('/home')
+def home():
+    return render_template('home.html')
+
+@app.route('/analysis-ui')
+def analysis_ui():
+    return render_template('analysis_page.html')
+
+@app.route('/models-ui')
+def models_ui():
+    return render_template('models_page.html')
+
+@app.route('/predict-ui')
+def predict_ui():
+    return render_template('predict_page.html')
+
+@app.route('/forecast-ui')
+def forecast_ui():
+    return render_template('forecast_page.html')
+
 if __name__ == '__main__':
     print("Starting VaticMacro Flask Server...")
     app.run(debug=True, host='127.0.0.1', port=5000)
