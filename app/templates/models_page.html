@@ -37,16 +37,16 @@
 <div class="bg-[#1a2026] border-l-4 border-[#adc6ff] p-6 rounded mb-6 flex justify-between">
 <div>
 <h3 class="text-xs text-[#8c909f] uppercase tracking-wider mb-2">Best Performing Model</h3>
-<p class="text-3xl font-bold text-[#adc6ff]">XGBoost</p>
+<p class="text-3xl font-bold text-[#adc6ff]">{{ best_model_name }}</p>
 </div>
 <div class="flex gap-8">
 <div>
 <p class="text-xs text-[#8c909f] uppercase tracking-wider mb-1">R² Score</p>
-<p class="text-xl font-semibold">0.94</p>
+<p class="text-xl font-semibold">{{ "%.2f"|format(best_model_r2) }}</p>
 </div>
 <div>
 <p class="text-xs text-[#8c909f] uppercase tracking-wider mb-1">MAE</p>
-<p class="text-xl font-semibold">0.38%</p>
+<p class="text-xl font-semibold">{{ "%.2f"|format(best_model_mae) }}%</p>
 </div>
 </div>
 </div>
@@ -62,30 +62,20 @@
 </tr>
 </thead>
 <tbody>
-<tr class="border-b border-[#2a2d3a]">
-<td class="px-4 py-3">Linear Regression</td>
-<td class="px-4 py-3 text-right">0.85%</td>
-<td class="px-4 py-3 text-right">1.12%</td>
-<td class="px-4 py-3 text-right">0.72</td>
+{% if models_metrics %}
+{% for model in models_metrics %}
+<tr class="border-b border-[#2a2d3a] {% if model.name == best_model_name %}border-l-4 border-l-[#adc6ff] bg-[#242b31] bg-opacity-50{% endif %}">
+<td class="px-4 py-3 {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ model.name }}</td>
+<td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.mae) }}%</td>
+<td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.rmse) }}%</td>
+<td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.r2) }}</td>
 </tr>
-<tr class="border-b border-[#2a2d3a]">
-<td class="px-4 py-3">Random Forest</td>
-<td class="px-4 py-3 text-right">0.52%</td>
-<td class="px-4 py-3 text-right">0.78%</td>
-<td class="px-4 py-3 text-right">0.88</td>
-</tr>
-<tr class="border-b border-[#2a2d3a] border-l-4 border-l-[#adc6ff] bg-[#242b31] bg-opacity-50">
-<td class="px-4 py-3 text-[#adc6ff] font-semibold">XGBoost</td>
-<td class="px-4 py-3 text-right text-[#adc6ff] font-semibold">0.38%</td>
-<td class="px-4 py-3 text-right text-[#adc6ff] font-semibold">0.52%</td>
-<td class="px-4 py-3 text-right text-[#adc6ff] font-semibold">0.94</td>
-</tr>
+{% endfor %}
+{% else %}
 <tr>
-<td class="px-4 py-3">ARIMA</td>
-<td class="px-4 py-3 text-right">0.92%</td>
-<td class="px-4 py-3 text-right">1.35%</td>
-<td class="px-4 py-3 text-right">0.65</td>
+<td class="px-4 py-3 text-[#8c909f] italic" colspan="4">No model metrics available. Train models first.</td>
 </tr>
+{% endif %}
 </tbody>
 </table>
 </div>

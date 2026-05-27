@@ -330,9 +330,63 @@ def predict():
 
 @app.route('/forecast')
 def forecast():
-    if os.path.exists(os.path.join(app.template_folder, 'forecast.html')):
-        return render_template('forecast.html')
-    return "<h1 style='color:white; font-family:sans-serif; text-align:center; padding-top: 50px;'>Forecast Page Placeholder</h1><p style='color:white; text-align:center;'>Paste the HTML when ready!</p>"
+    try:
+        # Load real data for forecasting
+        df = pd.read_csv(DATA_PATH)
+        df['Date'] = pd.to_datetime(df['Date'])
+        df = df.sort_values('Date').reset_index(drop=True)
+        
+        # Get last 12 months of data for forecast visualization
+        latest_date = df['Date'].max()
+        one_year_ago = latest_date - pd.Timedelta(days=365)
+        historical = df[df['Date'] >= one_year_ago].copy()
+        
+        # Prepare chart data
+        months = historical['Date'].dt.strftime('%b %Y').tolist()
+        cpi_values = historical[COLUMN_MAP['cpi']].tolist()
+        
+        # Calculate inflation rates (YoY)
+        inflation_rates = []
+        for idx, row in historical.iterrows():
+            d = row['Date']
+            y_ago = d - pd.Timedelta(days=365)
+            closest_idx = (df['Date'] - y_ago).abs().idxmin()
+            past_cpi = df.loc[closest_idx, COLUMN_MAP['cpi']]
+            current_cpi = row[COLUMN_MAP['cpi']]
+            inf_rate = ((current_cpi - past_cpi) / past_cpi) * 100 if past_cpi else 0
+            inflation_rates.append(round(inf_rate, 2))
+        
+        # Get latest values
+        latest = df.iloc[-1]
+        current_cpi = latest[COLUMN_MAP['cpi']]
+        current_wpi = latest[COLUMN_MAP['wpi']]
+        current_rate = latest[COLUMN_MAP['interest_rate']]
+        
+        # Calculate current inflation
+        past_year = df.iloc[-1]['Date'] - pd.Timedelta(days=365)
+        past_idx = (df['Date'] - past_year).abs().idxmin()
+        past_cpi = df.loc[past_idx, COLUMN_MAP['cpi']]
+        current_inflation = ((current_cpi - past_cpi) / past_cpi) * 100 if past_cpi else 0
+        
+        forecast_data = {
+            'months': months,
+            'cpi_values': cpi_values,
+            'inflation_rates': inflation_rates,
+            'current_cpi': round(current_cpi, 2),
+            'current_wpi': round(current_wpi, 2),
+            'current_rate': round(current_rate, 2),
+            'current_inflation': round(current_inflation, 2),
+            'latest_date': latest_date.strftime('%B %d, %Y'),
+            'forecast_model': 'ARIMA',
+            'model_order': '(2, 1, 2)',
+            'data_points': len(df)
+        }
+        
+        return render_template('forecast.html', **forecast_data)
+    except Exception as e:
+        print(f"Error in forecast: {e}")
+        traceback.print_exc()
+        return f"<h1 style='color:red; font-family:sans-serif;'>Error: {str(e)}</h1>"
 
 @app.route('/about')
 def about():
@@ -340,26 +394,26 @@ def about():
         return render_template('about.html')
     return "<h1 style='color:white; font-family:sans-serif; text-align:center; padding-top: 50px;'>About Page Placeholder</h1><p style='color:white; text-align:center;'>Paste the HTML when ready!</p>"
 
-# Material Design 3 UI Routes
+# Material Design 3 UI Routes (with real data)
 @app.route('/home')
 def home():
     return render_template('home.html')
 
 @app.route('/analysis-ui')
 def analysis_ui():
-    return render_template('analysis_page.html')
+    return analysis()  # Use the actual analysis route with real data
 
 @app.route('/models-ui')
 def models_ui():
-    return render_template('models_page.html')
+    return models()  # Use the actual models route with real data
 
-@app.route('/predict-ui')
+@app.route('/predict-ui', methods=['GET', 'POST'])
 def predict_ui():
-    return render_template('predict_page.html')
+    return predict()  # Use the actual predict route with real data
 
 @app.route('/forecast-ui')
 def forecast_ui():
-    return render_template('forecast_page.html')
+    return forecast()  # Use the actual forecast route with real data
 
 if __name__ == '__main__':
     print("Starting VaticMacro Flask Server...")
