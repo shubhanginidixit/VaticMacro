@@ -43,18 +43,27 @@
 <h2 class="text-xs text-[#8c909f] uppercase tracking-wider mb-4">Feature Correlation Matrix</h2>
 <div class="overflow-auto">
 <table class="w-full text-xs text-[#dde3eb]">
-<tr>
-<td class="p-2">CPI</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">0.92</td><td class="p-2 text-center">0.65</td><td class="p-2 text-center">-0.45</td><td class="p-2 text-center">0.23</td>
+<thead>
+<tr class="border-b border-[#2a2d3a]">
+<th class="p-2 text-left">Variable</th>
+{% for feature in features %}
+<th class="p-2 text-center text-[10px]">{{ feature[:3] }}</th>
+{% endfor %}
 </tr>
-<tr class="bg-[#242b31]">
-<td class="p-2">WPI</td><td class="p-2 text-center">0.92</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">0.58</td><td class="p-2 text-center">-0.34</td><td class="p-2 text-center">0.18</td>
+</thead>
+<tbody>
+{% for feature in features %}
+<tr class="{% if loop.index % 2 == 0 %}bg-[#242b31]{% endif %}">
+<td class="p-2 font-semibold">{{ feature }}</td>
+{% if corr_matrix[feature] %}
+{% for other_feature in features %}
+{% set corr_val = corr_matrix[feature].get(other_feature, 0) %}
+<td class="p-2 text-center {% if corr_val > 0.7 %}text-[#4edea3]{% elif corr_val < -0.3 %}text-[#ffb4ab]{% endif %}">{{ "%.2f"|format(corr_val) }}</td>
+{% endfor %}
+{% endif %}
 </tr>
-<tr>
-<td class="p-2">Interest Rate</td><td class="p-2 text-center">0.65</td><td class="p-2 text-center">0.58</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">-0.82</td><td class="p-2 text-center">-0.15</td>
-</tr>
-<tr class="bg-[#242b31]">
-<td class="p-2">GDP Proxy</td><td class="p-2 text-center">-0.45</td><td class="p-2 text-center">-0.34</td><td class="p-2 text-center">-0.82</td><td class="p-2 text-center">1.00</td><td class="p-2 text-center">-0.05</td>
-</tr>
+{% endfor %}
+</tbody>
 </table>
 </div>
 </div>
@@ -62,9 +71,9 @@
 <div class="col-span-1 bg-[#1a2026] p-6 rounded border border-[#2a2d3a]">
 <h2 class="text-xs text-[#8c909f] uppercase tracking-wider mb-4">Key Findings</h2>
 <ul class="space-y-3 text-sm">
-<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>CPI and WPI are strongly correlated (r = 0.92)</span></li>
-<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>Interest Rates show inverse relationship with GDP (r = -0.82)</span></li>
-<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>Brent Crude shows moderate correlation with inflation</span></li>
+{% for finding in key_findings %}
+<li class="flex gap-2"><span class="text-[#adc6ff]">•</span><span>{{ finding }}</span></li>
+{% endfor %}
 </ul>
 </div>
 </div>
