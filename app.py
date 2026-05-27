@@ -76,7 +76,9 @@ def dashboard():
         return ((current - past) / past) * 100
 
     # Historical data for chart (Last 24 months, resampling to monthly)
-    df_monthly = df.set_index('Date').resample('ME').last().reset_index()
+    df = df.copy()
+    df['Date'] = pd.to_datetime(df['Date'])
+    df_monthly = df.set_index('Date').resample('MS').last().reset_index()
     recent_history = df_monthly.tail(24).copy()
     
     # Calculate YoY inflation for the chart
@@ -152,7 +154,9 @@ def analysis():
     
     import numpy as np
     analysis_data_dict = {}
-    df_monthly = df.set_index('Date').resample('ME').last().reset_index()
+    df = df.copy()
+    df['Date'] = pd.to_datetime(df['Date'])
+    df_monthly = df.set_index('Date').resample('MS').last().reset_index()
     dates_str = df_monthly['Date'].dt.strftime('%b %Y').tolist()
     
     for col_key, col_name in corr_cols.items():
