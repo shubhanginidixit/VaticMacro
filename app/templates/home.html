@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VaticMacro - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+darkMode: "class",
+theme: {
+extend: {
+"colors": {
+"primary": "#adc6ff",
+"on-surface": "#dde3eb",
+"surface": "#0e141a",
+"background": "#0e141a",
+"outline": "#8c909f",
+"outline-variant": "#424754",
+"surface-container": "#1a2026",
+"surface-container-lowest": "#080f14"
+}
+}
+}
+}
+</script>
+</head>
+<body class="bg-background text-on-surface font-['Inter',sans-serif]">
+<!-- Navigation -->
+<nav class="fixed left-0 top-0 h-full w-[220px] bg-surface-container-lowest border-r border-outline-variant flex flex-col py-6 z-20">
+<div class="px-6 mb-8">
+<h1 class="font-semibold text-on-surface">VaticMacro</h1>
+<p class="text-sm text-outline mt-1">Institutional Analytics</p>
+</div>
+<ul class="flex-1 space-y-1 px-3">
+<li><a href="/" class="text-primary border-l-[3px] border-primary flex items-center gap-3 px-4 py-3 font-semibold"><span class="material-symbols-outlined">dashboard</span><span>Dashboard</span></a></li>
+<li><a href="/analysis" class="text-outline hover:text-primary flex items-center gap-3 px-4 py-3 transition-colors"><span class="material-symbols-outlined">analytics</span><span>Analysis</span></a></li>
+<li><a href="/models" class="text-outline hover:text-primary flex items-center gap-3 px-4 py-3 transition-colors"><span class="material-symbols-outlined">hub</span><span>Models</span></a></li>
+<li><a href="/predict" class="text-outline hover:text-primary flex items-center gap-3 px-4 py-3 transition-colors"><span class="material-symbols-outlined">query_stats</span><span>Predict</span></a></li>
+<li><a href="/forecast" class="text-outline hover:text-primary flex items-center gap-3 px-4 py-3 transition-colors"><span class="material-symbols-outlined">timeline</span><span>Forecast</span></a></li>
+</ul>
+<div class="px-6 mt-auto">
+<p class="text-xs text-outline">v1.0 • IEEE 2025</p>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="ml-[220px] min-h-screen p-8">
+<div class="max-w-6xl">
+<h1 class="text-4xl font-bold mb-4">Welcome to VaticMacro</h1>
+<p class="text-lg text-outline mb-8">Advanced Macroeconomic Inflation Prediction for India</p>
+<div class="grid grid-cols-3 gap-6 mb-8">
+<div class="bg-surface-container p-6 rounded">
+<h3 class="font-semibold mb-2">Real-Time Analysis</h3>
+<p class="text-outline text-sm">Monitor live inflation trends and economic indicators</p>
+</div>
+<div class="bg-surface-container p-6 rounded">
+<h3 class="font-semibold mb-2">Predictive Models</h3>
+<p class="text-outline text-sm">State-of-the-art ML models for accurate forecasting</p>
+</div>
+<div class="bg-surface-container p-6 rounded">
+<h3 class="font-semibold mb-2">Data-Driven Insights</h3>
+<p class="text-outline text-sm">Comprehensive economic data from trusted sources</p>
+</div>
+</div>
+<a href="/dashboard" class="bg-primary text-on-primary px-6 py-3 rounded font-semibold inline-block hover:opacity-90">View Dashboard</a>
+</div>
+</main>
+</body>
+</html>
