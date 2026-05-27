@@ -382,7 +382,7 @@ def forecast():
             'data_points': len(df)
         }
         
-        return render_template('forecast.html', **forecast_data)
+        return render_template('forecast_page.html', **forecast_data)
     except Exception as e:
         print(f"Error in forecast: {e}")
         traceback.print_exc()
