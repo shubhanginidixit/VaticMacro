@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VaticMacro - Dashboard Overview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-highest": "#2f353c",
+                      "error-container": "#93000a",
+                      "primary-container": "#4d8eff",
+                      "inverse-on-surface": "#2b3137",
+                      "surface-dim": "#0e141a",
+                      "surface-container-high": "#242b31",
+                      "secondary-fixed": "#6ffbbe",
+                      "on-tertiary-fixed": "#410004",
+                      "on-tertiary": "#68000a",
+                      "on-surface-variant": "#c2c6d6",
+                      "error": "#ffb4ab",
+                      "primary": "#adc6ff",
+                      "secondary-container": "#00a572",
+                      "surface-container-low": "#161c22",
+                      "on-secondary": "#003824",
+                      "surface-variant": "#2f353c",
+                      "tertiary-fixed-dim": "#ffb3ad",
+                      "on-tertiary-container": "#5c0008",
+                      "on-background": "#dde3eb",
+                      "on-surface": "#dde3eb",
+                      "on-tertiary-fixed-variant": "#930013",
+                      "surface-bright": "#333a40",
+                      "on-secondary-fixed-variant": "#005236",
+                      "on-secondary-container": "#00311f",
+                      "surface-tint": "#adc6ff",
+                      "surface-container": "#1a2026",
+                      "surface": "#0e141a",
+                      "on-error": "#690005",
+                      "on-error-container": "#ffdad6",
+                      "inverse-primary": "#005ac2",
+                      "primary-fixed-dim": "#adc6ff",
+                      "background": "#0e141a",
+                      "on-primary": "#002e6a",
+                      "on-primary-fixed": "#001a42",
+                      "on-secondary-fixed": "#002113",
+                      "primary-fixed": "#d8e2ff",
+                      "on-primary-fixed-variant": "#004395",
+                      "on-primary-container": "#00285d",
+                      "secondary": "#4edea3",
+                      "outline-variant": "#424754",
+                      "secondary-fixed-dim": "#4edea3",
+                      "tertiary": "#ffb3ad",
+                      "tertiary-fixed": "#ffdad7",
+                      "tertiary-container": "#ff5451",
+                      "outline": "#8c909f",
+                      "surface-container-lowest": "#080f14",
+                      "inverse-surface": "#dde3eb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sidebar-width": "220px",
+                      "gutter": "1rem",
+                      "margin-page": "2rem",
+                      "container-gap": "1.5rem",
+                      "stack-tight": "0.5rem"
+              },
+              "fontFamily": {
+                      "caption": ["Inter"],
+                      "hero-metric": ["Inter"],
+                      "body-md": ["Inter"],
+                      "value-lg": ["Inter"],
+                      "label-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "400"}],
+                      "hero-metric": ["42px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "value-lg": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                      "label-sm": ["13px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "400"}]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0f1117;
+            color: #dde3eb;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .card-surface {
+            background-color: #1a1d27;
+            border-radius: 8px;
+        }
+        .text-emerald-400 {
+            color: #4edea3;
+        }
+        .text-rose-400 {
+            color: #ffb4ab;
+        }
+        .sparkline {
+            width: 100%;
+            height: 60px;
+        }
+        .chart-grid {
+            border-bottom: 1px dashed #2a2d3a;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-surface-container-lowest border-r border-outline-variant flex flex-col py-6 z-20">
+<div class="px-6 mb-8">
+<h1 class="font-body-md font-semibold text-on-surface tracking-tight">VaticMacro</h1>
+<p class="font-caption text-caption text-outline mt-1">Institutional Analytics</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-primary border-l-[3px] border-primary bg-transparent font-semibold flex items-center gap-3 px-4 py-3" href="/dashboard">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors duration-200" href="/analysis">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-sm text-label-sm">Analysis</span>
+</a>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors duration-200" href="/models">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-label-sm text-label-sm">Models</span>
+</a>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors duration-200" href="/predict">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-sm text-label-sm">Predict</span>
+</a>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors duration-200" href="/forecast">
+<span class="material-symbols-outlined">timeline</span>
+<span class="font-label-sm text-label-sm">Forecast</span>
+</a>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors duration-200" href="/about">
+<span class="material-symbols-outlined">info</span>
+<span class="font-label-sm text-label-sm">About</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<p class="font-caption text-caption text-outline">v1.0 • IEEE 2025</p>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="ml-[220px] flex-1 min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-gutter border-b border-outline-variant bg-transparent w-full z-10 sticky top-0 bg-background/90 backdrop-blur-sm">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md text-on-surface font-medium">Dashboard &gt; Overview</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-sm text-label-sm text-outline hover:text-on-primary-container transition-colors flex items-center gap-2">
+                    Date Range
+                    <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+</button>
+<button class="text-outline hover:text-on-primary-container transition-colors flex items-center">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-margin-page flex-1 space-y-container-gap">
+<!-- ROW 1 (Hero) -->
+<div class="flex gap-container-gap h-40">
+<!-- Left (60%) -->
+<div class="card-surface p-6 flex-1 flex justify-between items-center relative overflow-hidden">
+<div class="z-10">
+<p class="font-label-sm text-label-sm text-outline uppercase mb-2">Current Inflation Rate</p>
+<h2 class="font-hero-metric text-hero-metric text-on-surface mb-2">{{ inflation_rate }}%</h2>
+<div class="flex items-center gap-3">
+<span class="font-caption text-caption text-outline">Year-over-Year CPI Change</span>
+<span class="font-caption text-caption {% if inflation_change >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+    {% if inflation_change >= 0 %}▲{% else %}▼{% endif %} {{ inflation_change }}% from last month
+</span>
+</div>
+</div>
+<div class="w-1/3 h-full absolute right-6 top-0 flex items-center opacity-70">
+<canvas id="sparklineChart" class="w-full h-[60px]"></canvas>
+</div>
+</div>
+<!-- Right (40%) -->
+<div class="w-2/5 flex flex-col gap-4">
+<div class="card-surface p-4 flex-1 flex justify-between items-center">
+<p class="font-label-sm text-label-sm text-outline uppercase">CPI Index</p>
+<div class="text-right">
+<p class="font-value-lg text-value-lg text-on-surface">{{ cpi_value }}</p>
+<p class="font-caption text-caption {% if cpi_change >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %} mt-1">{{ cpi_change }}%</p>
+</div>
+</div>
+<div class="card-surface p-4 flex-1 flex justify-between items-center">
+<p class="font-label-sm text-label-sm text-outline uppercase">WPI Index</p>
+<div class="text-right">
+<p class="font-value-lg text-value-lg text-on-surface">{{ wpi_value }}</p>
+<p class="font-caption text-caption {% if wpi_change >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %} mt-1">{{ wpi_change }}%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- ROW 2 (4 equal cards) -->
+<div class="grid grid-cols-4 gap-container-gap">
+<div class="card-surface p-5">
+<p class="font-label-sm text-label-sm text-outline uppercase mb-3">Interest Rate</p>
+<p class="font-value-lg text-value-lg text-on-surface">{{ interest_rate }}%</p>
+</div>
+<div class="card-surface p-5 flex justify-between items-end">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase mb-3">USD/INR</p>
+<p class="font-value-lg text-value-lg text-on-surface">₹{{ usdinr_value }}</p>
+</div>
+<span class="font-caption text-caption {% if usdinr_change >= 0 %}text-rose-400{% else %}text-emerald-400{% endif %}">
+    {% if usdinr_change >= 0 %}▲{% else %}▼{% endif %} {{ usdinr_change }}%
+</span>
+</div>
+<div class="card-surface p-5 flex justify-between items-end">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase mb-3">Brent Crude</p>
+<p class="font-value-lg text-value-lg text-on-surface">${{ brent_value }}/bbl</p>
+</div>
+<span class="font-caption text-caption {% if brent_change <= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+    {% if brent_change <= 0 %}▼{% else %}▲{% endif %} {{ brent_change }}%
+</span>
+</div>
+<div class="card-surface p-5 flex justify-between items-end">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase mb-3">GDP Growth</p>
+<p class="font-value-lg text-value-lg text-on-surface">{{ gdp_growth }}%</p>
+</div>
+<span class="font-caption text-caption {% if gdp_growth >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+    {% if gdp_growth >= 0 %}▲{% else %}▼{% endif %}
+</span>
+</div>
+</div>
+<div class="card-surface p-6 min-h-[400px] overflow-hidden flex flex-col">
+<p class="font-label-sm text-label-sm text-outline uppercase mb-6">India Inflation Rate (YoY %)</p>
+<div class="flex-1 relative">
+<canvas id="inflationChart" class="w-full h-full"></canvas>
+</div>
+</div>
+<!-- ROW 4 (50/50 split) -->
+<div class="flex gap-container-gap">
+<!-- Left: Quick Statistics -->
+<div class="card-surface p-6 flex-1">
+<p class="font-label-sm text-label-sm text-outline uppercase mb-4">Quick Statistics</p>
+<ul class="space-y-3 font-body-md text-body-md text-on-surface">
+<li class="flex justify-between border-b border-[#2a2d3a] pb-2">
+<span class="text-outline">Average Inflation:</span>
+<span>{{ avg_inflation }}%</span>
+</li>
+<li class="flex justify-between border-b border-[#2a2d3a] pb-2">
+<span class="text-outline">Peak Inflation:</span>
+<span>{{ peak_inflation }}% ({{ peak_date }})</span>
+</li>
+<li class="flex justify-between border-b border-[#2a2d3a] pb-2">
+<span class="text-outline">Lowest Inflation:</span>
+<span>{{ low_inflation }}% ({{ low_date }})</span>
+</li>
+<li class="flex justify-between pt-1">
+<span class="text-outline">Current Trend:</span>
+<span class="text-emerald-400">{{ trend }}</span>
+</li>
+</ul>
+</div>
+<!-- Right: Data Coverage -->
+<div class="card-surface p-6 flex-1">
+<p class="font-label-sm text-label-sm text-outline uppercase mb-4">Data Coverage</p>
+<ul class="space-y-3 font-body-md text-body-md text-on-surface">
+<li class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<span>{{ num_features }} Economic Indicators</span>
+</li>
+<li class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<span>{{ num_observations }} Monthly Observations</span>
+</li>
+<li class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<span>{{ date_range }}</span>
+</li>
+<li class="flex items-center gap-3 mt-4 pt-4 border-t border-[#2a2d3a] text-outline font-caption text-caption">
+<span>Source: FRED, OECD, RBI</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</main>
+
+<!-- Chart.js for real interactive charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Inflation chart data will be injected from Flask
+const inflationData = {{ inflation_history | tojson | safe }};
+
+if (inflationData && document.getElementById('inflationChart')) {
+    const ctx = document.getElementById('inflationChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: inflationData.dates,
+            datasets: [{
+                label: 'Inflation Rate (%)',
+                data: inflationData.values,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a1d27',
+                    titleColor: '#94a3b8',
+                    bodyColor: '#e2e8f0',
+                    borderColor: '#2a2d3a',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#64748b', font: { size: 11 } },
+                    grid: { color: '#2a2d3a', drawBorder: false }
+                },
+                y: {
+                    ticks: { color: '#64748b', font: { size: 11 }, callback: v => v + '%' },
+                    grid: { color: '#2a2d3a', drawBorder: false, borderDash: [3, 3] }
+                }
+            }
+        }
+    });
+}
+
+if (inflationData && document.getElementById('sparklineChart')) {
+    const sparkCtx = document.getElementById('sparklineChart').getContext('2d');
+    // Use the last 6 months for a clean sparkline
+    const sparkData = inflationData.values.slice(-6);
+    const sparkLabels = inflationData.dates.slice(-6);
+    
+    new Chart(sparkCtx, {
+        type: 'line',
+        data: {
+            labels: sparkLabels,
+            datasets: [{
+                data: sparkData,
+                borderColor: '#3b82f6',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            },
+            scales: {
+                x: { display: false },
+                y: { display: false }
+            },
+            interaction: { mode: null }
+        }
+    });
+}
+</script>
+</body></html>

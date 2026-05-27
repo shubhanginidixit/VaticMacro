@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VaticMacro - Model Performance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#adc6ff",
+                        "on-primary-container": "#00285d",
+                        "inverse-primary": "#005ac2",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-primary": "#002e6a",
+                        "on-surface": "#dde3eb",
+                        "surface-container-highest": "#2f353c",
+                        "tertiary-container": "#ff5451",
+                        "background": "#0e141a",
+                        "surface-dim": "#0e141a",
+                        "on-primary-fixed": "#001a42",
+                        "surface": "#0e141a",
+                        "surface-container": "#1a2026",
+                        "tertiary-fixed": "#ffdad7",
+                        "surface-variant": "#2f353c",
+                        "on-background": "#dde3eb",
+                        "surface-container-high": "#242b31",
+                        "on-secondary-fixed-variant": "#005236",
+                        "error": "#ffb4ab",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#4d8eff",
+                        "tertiary": "#ffb3ad",
+                        "surface-container-lowest": "#080f14",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-secondary": "#003824",
+                        "on-tertiary-container": "#5c0008",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "primary-fixed": "#d8e2ff",
+                        "outline": "#8c909f",
+                        "on-secondary-container": "#00311f",
+                        "on-primary-fixed-variant": "#004395",
+                        "inverse-surface": "#dde3eb",
+                        "inverse-on-surface": "#2b3137",
+                        "surface-container-low": "#161c22",
+                        "secondary": "#4edea3",
+                        "surface-tint": "#adc6ff",
+                        "outline-variant": "#424754",
+                        "surface-bright": "#333a40",
+                        "on-tertiary-fixed": "#410004",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#002113",
+                        "secondary-container": "#00a572",
+                        "on-tertiary": "#68000a",
+                        "on-surface-variant": "#c2c6d6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sidebar-width": "220px",
+                        "stack-tight": "0.5rem",
+                        "gutter": "1rem",
+                        "margin-page": "2rem",
+                        "container-gap": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "value-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "caption": ["Inter"],
+                        "hero-metric": ["Inter"]
+                    },
+                    "fontSize": {
+                        "value-lg": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-sm": ["13px", { "lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "caption": ["12px", { "lineHeight": "1.4", "fontWeight": "400" }],
+                        "hero-metric": ["42px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased overflow-x-hidden min-h-screen">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[220px] bg-surface-container-lowest border-r border-outline-variant flex flex-col py-6 z-50">
+<div class="px-6 mb-8">
+<h1 class="font-body-md text-body-md font-semibold text-on-surface tracking-tight">VaticMacro</h1>
+<p class="font-label-sm text-label-sm text-outline mt-1 uppercase tracking-wider">Institutional Analytics</p>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-1">
+<li>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors hover:text-primary duration-200" href="/dashboard">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors hover:text-primary duration-200" href="/analysis">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-sm text-label-sm">Analysis</span>
+</a>
+</li>
+<li>
+<a class="text-primary border-l-[3px] border-primary bg-surface-variant/10 font-semibold flex items-center gap-3 px-4 py-3 transition-all duration-150" href="/models">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-label-sm text-label-sm">Models</span>
+</a>
+</li>
+<li>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors hover:text-primary duration-200" href="/predict">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-sm text-label-sm">Predict</span>
+</a>
+</li>
+<li>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors hover:text-primary duration-200" href="/forecast">
+<span class="material-symbols-outlined">timeline</span>
+<span class="font-label-sm text-label-sm">Forecast</span>
+</a>
+</li>
+<li>
+<a class="text-outline hover:text-on-surface-variant flex items-center gap-3 px-4 py-3 transition-colors hover:text-primary duration-200" href="/about">
+<span class="material-symbols-outlined">info</span>
+<span class="font-label-sm text-label-sm">About</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="px-6 mt-auto">
+<p class="font-caption text-caption text-outline">v1.0 • IEEE 2025</p>
+</div>
+</nav>
+<!-- TopAppBar -->
+<header class="fixed top-0 ml-[220px] w-[calc(100%-220px)] h-16 bg-background flex justify-between items-center px-gutter border-b border-outline-variant z-40">
+<div class="flex items-center gap-2">
+<h2 class="font-body-md text-body-md text-on-surface font-medium">Models &gt; Performance</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-sm text-label-sm text-outline hover:text-on-primary-container transition-colors focus:ring-1 focus:ring-primary-container px-3 py-1.5 rounded flex items-center gap-2 border border-outline-variant">
+<span>Date Range</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<div class="flex gap-2">
+<button class="text-outline hover:text-on-primary-container transition-colors p-1.5 focus:ring-1 focus:ring-primary-container rounded">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+<button class="text-outline hover:text-on-primary-container transition-colors p-1.5 focus:ring-1 focus:ring-primary-container rounded">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[220px] mt-16 p-margin-page min-h-[calc(100vh-64px)] max-w-[1400px]">
+<!-- TOP SECTION -->
+<div class="mb-container-gap">
+<h2 class="font-value-lg text-value-lg text-on-surface mb-6 font-bold tracking-tight">Model Performance</h2>
+<div class="bg-surface-container w-full p-6 flex flex-col md:flex-row md:items-center justify-between border-l-[3px] border-primary rounded-r">
+<div>
+<h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-2">Best Performing Model</h3>
+<p class="font-value-lg text-value-lg text-primary">{{ best_model_name }}</p>
+</div>
+<div class="flex gap-8 mt-4 md:mt-0">
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">R² Score</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">{{ best_model_r2 }}</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">MAE</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">{{ best_model_mae }}%</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">RMSE</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">{{ best_model_rmse }}%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- MIDDLE SECTION: Metrics Table -->
+<div class="mb-container-gap bg-surface-container rounded-lg">
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant">
+<th class="py-4 px-6 font-label-sm text-label-sm text-outline uppercase tracking-wider">Model</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-outline uppercase tracking-wider text-right">MAE</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-outline uppercase tracking-wider text-right">RMSE</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-outline uppercase tracking-wider text-right">MSE</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-outline uppercase tracking-wider text-right">R² Score</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-on-surface">
+{% for model in models_metrics %}
+<tr class="border-b border-outline-variant/50 hover:bg-surface-variant/30 transition-colors {% if model.name == best_model_name %}border-l-[3px] border-l-primary bg-surface-variant/10{% endif %}">
+<td class="py-3 px-6 {% if model.name == best_model_name %}pl-[21px] font-semibold text-primary{% else %}pl-6{% endif %}">{{ model.name }}</td>
+<td class="py-3 px-6 text-right {% if model.name == best_model_name %}font-semibold text-primary{% endif %}">{{ model.mae }}%</td>
+<td class="py-3 px-6 text-right {% if model.name == best_model_name %}font-semibold text-primary{% endif %}">{{ model.rmse }}%</td>
+<td class="py-3 px-6 text-right {% if model.name == best_model_name %}font-semibold text-primary{% endif %}">{{ model.mse }}</td>
+<td class="py-3 px-6 text-right {% if model.name == best_model_name %}font-semibold text-primary{% endif %}">{{ model.r2 }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+<!-- BOTTOM SECTION: Charts -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-container-gap">
+<!-- Left Chart -->
+<div class="xl:col-span-7 bg-surface-container p-6 flex flex-col min-h-[400px] rounded-lg">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-sm text-label-sm text-on-surface uppercase tracking-wider">Predicted vs Actual Inflation</h3>
+</div>
+<div class="flex-1 relative w-full h-[300px]">
+    <canvas id="predictionChart"></canvas>
+</div>
+</div>
+<!-- Right Chart -->
+<div class="xl:col-span-5 bg-surface-container p-6 flex flex-col min-h-[400px] rounded-lg">
+<h3 class="font-label-sm text-label-sm text-on-surface uppercase tracking-wider mb-8">Feature Importance ({{ best_model_name }})</h3>
+<div class="flex-1 flex flex-col justify-center space-y-6">
+{% for feature in feature_importances %}
+<div class="relative">
+<div class="flex justify-between font-caption text-caption text-outline mb-1.5">
+<span>{{ feature.name }}</span>
+<span class="text-on-surface">{{ feature.value }}</span>
+</div>
+<div class="w-full bg-surface-variant h-3 rounded-sm overflow-hidden">
+<div class="bg-primary rounded-sm transition-all duration-500" style="width: {{ feature.percentage }}%; opacity: {{ (feature.percentage / 100) * 0.6 + 0.4 }}"></div>
+</div>
+</div>
+{% endfor %}
+</div>
+</div>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Will be populated by backend
+const predictionData = {{ prediction_chart_data | tojson | safe }};
+
+if (predictionData && document.getElementById('predictionChart')) {
+    const ctx = document.getElementById('predictionChart').getContext('2d');
+    
+    // Setup datasets based on passed data
+    const datasets = [
+        {
+            label: 'Actual',
+            data: predictionData.actual,
+            borderColor: '#dde3eb',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2
+        },
+        {
+            label: '{{ best_model_name }}',
+            data: predictionData.best_model_predictions,
+            borderColor: '#adc6ff',
+            borderWidth: 2,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            tension: 0.2
+        }
+    ];
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: predictionData.dates,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: { color: '#8c909f', font: { size: 12 }, boxWidth: 12, usePointStyle: true }
+                },
+                tooltip: {
+                    backgroundColor: '#1a1d27',
+                    titleColor: '#94a3b8',
+                    bodyColor: '#e2e8f0',
+                    borderColor: '#2a2d3a',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#8c909f', font: { size: 11 }, maxTicksLimit: 8 },
+                    grid: { color: '#2f353c', drawBorder: false, borderDash: [3, 3] }
+                },
+                y: {
+                    ticks: { color: '#8c909f', font: { size: 11 }, callback: v => v + '%' },
+                    grid: { color: '#2f353c', drawBorder: false, borderDash: [3, 3] }
+                }
+            }
+        }
+    });
+}
+</script>
+</body></html>
