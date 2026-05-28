@@ -195,7 +195,7 @@ def models():
     
     for m in models_metrics:
         if m.get("name") == best_model_name:
-            best_model_r2 = m.get("r2", 0)
+            best_model_r2 = m.get("r2_mean", m.get("r2", 0))
             best_model_mae = m.get("mae", 0)
             best_model_rmse = m.get("rmse", 0)
             break
