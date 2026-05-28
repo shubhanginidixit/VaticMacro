@@ -369,7 +369,34 @@ def predict():
                 
                 # Ridge model now predicts Year-over-Year inflation (%) directly
                 pred_inflation = best_model.predict(pred_X)[0]
-                prediction = round(float(pred_inflation), 2)
+                # Defensive post-processing: protect the app from catastrophic predictions
+                # Compute a recent historical fallback (median YoY inflation over last 12 months)
+                df_dates = df.copy()
+                df_dates['Date'] = pd.to_datetime(df_dates['Date'])
+                latest_date_hist = df_dates['Date'].max()
+                one_year_ago = latest_date_hist - pd.Timedelta(days=365)
+                recent = df_dates[df_dates['Date'] >= one_year_ago].copy()
+                # Compute YoY inflation for recent window
+                yoy_vals = []
+                for idx, r in recent.iterrows():
+                    d = r['Date']
+                    y_ago = d - pd.Timedelta(days=365)
+                    closest_idx = (df_dates['Date'] - y_ago).abs().idxmin()
+                    past_cpi = df_dates.loc[closest_idx, COLUMN_MAP['cpi']]
+                    cur_cpi = r[COLUMN_MAP['cpi']]
+                    if past_cpi:
+                        yoy_vals.append(((cur_cpi - past_cpi) / past_cpi) * 100)
+                fallback_median = float(pd.Series(yoy_vals).median()) if len(yoy_vals) > 0 else float(df[cpi_col].pct_change(365).median())
+
+                prediction_raw = float(pred_inflation)
+                # If the model predicts an extreme value (negative or implausibly large), fallback to recent median
+                if pd.isna(prediction_raw) or prediction_raw < 0 or abs(prediction_raw) > 25:
+                    prediction = round(fallback_median, 2)
+                    interpretation_text = f"Model produced an extreme prediction ({round(prediction_raw,2)}%). Using recent median fallback {prediction}% to keep outputs stable."
+                    interpretation_color = "border-l-[#ffb4ab]"
+                else:
+                    prediction = round(prediction_raw, 2)
+
                 display_prediction = prediction
 
                 print(f"\n=== RIDGE REGRESSION PREDICTION (K-fold CV) ===")
