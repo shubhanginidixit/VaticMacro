@@ -276,11 +276,11 @@ def predict():
                 # Calculate historical inflation statistics for dynamic bounds
                 # This ensures bounds adapt as new data is added
                 cpi_col = COLUMN_MAP['cpi']
-                df['cpi_monthly_inflation'] = df[cpi_col].pct_change() * 100
-                df['cpi_annual_inflation'] = df[cpi_col].pct_change(periods=12) * 100
+                historical_cpi = df[cpi_col].copy()
+                cpi_annual_change = historical_cpi.pct_change(periods=12) * 100
                 
                 # Get statistics from historical data (excluding NaN from pct_change)
-                historical_inflation = df['cpi_annual_inflation'].dropna()
+                historical_inflation = cpi_annual_change.dropna()
                 inflation_mean = historical_inflation.mean()
                 inflation_std = historical_inflation.std()
                 inflation_min = historical_inflation.min()
@@ -316,9 +316,8 @@ def predict():
                 new_row[COLUMN_MAP['gdp_proxy']] = val_gdp
                 new_row[COLUMN_MAP['wpi']] = val_wpi
                 
-                # Append the scenario row
-                df_pred = pd.concat([df.drop('cpi_monthly_inflation', axis=1).drop('cpi_annual_inflation', axis=1), 
-                                    pd.DataFrame([new_row])], ignore_index=True)
+                # Append the scenario row (preserving all columns)
+                df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 
                 # Generate all lag/rolling features!
                 featured_df = create_features(df_pred)
