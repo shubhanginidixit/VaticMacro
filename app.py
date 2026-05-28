@@ -18,14 +18,28 @@ METRICS_PATH = "models/metrics.json"
 DATA_PATH = "data/inflation_dataset.csv"
 
 FEATURE_COLUMNS = None
+MODEL_R2 = None
+MODEL_NAME = "Ridge (K-fold CV)"
 try:
     best_model = joblib.load(MODEL_PATH)
     if isinstance(best_model, dict):
         FEATURE_COLUMNS = best_model.get("feature_columns")
+        MODEL_NAME = best_model.get("model_name", MODEL_NAME)
         best_model = best_model.get("pipeline")
 except Exception as e:
     print(f"Warning: Could not load model at {MODEL_PATH}. Error: {e}")
     best_model = None
+
+if os.path.exists(METRICS_PATH):
+    try:
+        with open(METRICS_PATH, 'r') as f:
+            metrics_data = json.load(f)
+        for metric in metrics_data.get("metrics", []):
+            if metric.get("name") == metrics_data.get("best_model"):
+                MODEL_R2 = metric.get("r2_mean", metric.get("r2", None))
+                break
+    except Exception as e:
+        print(f"Warning: Could not load metrics at {METRICS_PATH}. Error: {e}")
 
 # Centralized Column Map
 COLUMN_MAP = {
@@ -243,7 +257,7 @@ def predict():
     prediction = None
     interpretation_text = ""
     interpretation_color = "border-l-primary"
-    model_used = "Ridge (K-fold CV)"
+    model_used = MODEL_NAME
     
     if request.method == 'POST':
         try:
@@ -304,30 +318,28 @@ def predict():
                 df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 featured_df = create_features(df_pred)
                 
-                # Get the last row's features for prediction and align with training columns.
-                pred_X = featured_df.drop(['Date', 'CPI'], axis=1, errors='ignore').iloc[[-1]]
+                # Select the scenario row itself after sorting; it may not be the last row if the
+                # requested scenario date falls inside the historical series.
+                # If there are multiple rows for the same date (historic + appended scenario),
+                # prefer the appended scenario row by taking the last occurrence.
+                scenario_feature_row = featured_df.loc[featured_df['Date'] == new_date].tail(1)
+                if scenario_feature_row.empty:
+                    scenario_feature_row = featured_df.iloc[[-1]]
+
+                # Align with the training feature order used by the saved pipeline.
+                pred_X = scenario_feature_row.drop(['Date', 'CPI'], axis=1, errors='ignore')
                 if FEATURE_COLUMNS:
                     pred_X = pred_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
                 
-                # Ridge Regression directly predicts CPI based on percentage-change features
-                # This works for any year (2000-2022 training generalizes to future dates)
-                pred_cpi = best_model.predict(pred_X)[0]
-                
-                # Calculate YoY inflation using the matching year-ago CPI base
-                inflation_prediction = ((pred_cpi - base_cpi) / base_cpi) * 100 if base_cpi else 0
-                
-                # Keep the raw model output so different inputs produce different values.
-                prediction = round(float(inflation_prediction), 2)
+                # Ridge model now predicts Year-over-Year inflation (%) directly
+                pred_inflation = best_model.predict(pred_X)[0]
+                prediction = round(float(pred_inflation), 2)
                 display_prediction = prediction
-                
+
                 print(f"\n=== RIDGE REGRESSION PREDICTION (K-fold CV) ===")
                 print(f"Scenario Date: {new_date.date()}")
-                print(f"Latest CPI: {latest_cpi:.4f}")
-                print(f"Base CPI (year-ago nearest): {base_cpi:.4f}")
-                print(f"Predicted CPI (30-day forward): {pred_cpi:.4f}")
-                print(f"Inflation Rate: {prediction}%")
+                print(f"Predicted YoY Inflation (%): {prediction}%")
                 print(f"(Ridge Regression trained on 2000-2022 percentage-change features)")
-                print(f"(Generalizes to any year including 2026+)\n")
                 
                 # Interpret Results
                 if prediction < 2:
@@ -354,7 +366,8 @@ def predict():
                            display_prediction=display_prediction if request.method == 'POST' else None,
                            interpretation_text=interpretation_text,
                            interpretation_color=interpretation_color,
-                           model_used=model_used)
+                           model_used=model_used,
+                           model_r2=MODEL_R2 if MODEL_R2 is not None else 0)
 
 @app.route('/forecast')
 def forecast():

@@ -361,7 +361,7 @@
     <span class="font-caption text-caption">Model Used: {{ model_used }}</span>
     </div>
     <div class="font-caption text-caption text-on-surface-variant">
-                                Accuracy (R²) = <span class="text-secondary font-medium">0.94</span>
+                                Accuracy (R²) = <span class="text-secondary font-medium">{{ "%.2f"|format(model_r2) }}</span>
     </div>
     </footer>
 </div>

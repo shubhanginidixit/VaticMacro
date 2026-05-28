@@ -60,6 +60,24 @@ def create_features(df):
         df['oil_to_inr_pct_change'] = df['oil_to_inr_ratio'].pct_change(30) * 100
     
     # Drop rows with NaN from shifts/rolling
+    # Clip extreme percentage-change values to reduce outlier influence
+    pct_cols = [c for c in df.columns if 'pct_change' in c or 'lag_pct' in c or 'rolling_pct_avg' in c]
+    if pct_cols:
+        # Use tighter clipping to reduce influence of extreme policy or market shocks
+        df[pct_cols] = df[pct_cols].clip(lower=-25.0, upper=25.0)
+
     df = df.dropna().reset_index(drop=True)
+
+    # Remove original raw indicator columns (keep only engineered percent-change and ratio features)
+    # This prevents large-magnitude raw features (e.g., GDP levels) from dominating the model
+    raw_cols = [col for col in df.columns if col in indicator_cols]
+    if raw_cols:
+        df = df.drop(columns=raw_cols)
+
+    # Drop extremely volatile oil-related change features which often spike (e.g., COVID shock)
+    volatile_patterns = ['datafilenew(india basket crude oil)', 'DCOILBRENTEU', 'oil_to_inr']
+    drop_cols = [c for c in df.columns if any(pat in c for pat in volatile_patterns)]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
     
     return df
