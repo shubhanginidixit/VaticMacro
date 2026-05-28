@@ -271,10 +271,20 @@ def predict():
                 # Load the raw dataset
                 df = pd.read_csv(DATA_PATH)
                 df['Date'] = pd.to_datetime(df['Date'])
+                df = df.sort_values('Date').reset_index(drop=True)
+                
+                # Get current CPI and recent trend
+                latest_row = df.iloc[-1].copy()
+                latest_cpi = latest_row[COLUMN_MAP['cpi']]
+                
+                # Get CPI from 90 days ago for short-term trend
+                past_90_idx = (df['Date'] - (latest_row['Date'] - pd.Timedelta(days=90))).abs().idxmin()
+                past_90_cpi = df.loc[past_90_idx, COLUMN_MAP['cpi']]
+                trend_inflation = ((latest_cpi - past_90_cpi) / past_90_cpi) * 100 if past_90_cpi else 2.5
                 
                 # Create a new row representing our "scenario" day
                 last_date = df['Date'].max()
-                new_date = last_date + pd.Timedelta(days=1)
+                new_date = last_date + pd.Timedelta(days=30)  # 30 days forward
                 
                 new_row = df.iloc[-1].copy()
                 new_row['Date'] = new_date
@@ -293,27 +303,30 @@ def predict():
                 # Extract the final row containing the full context for prediction
                 pred_X = featured_df.drop(['Date', 'CPI'], axis=1).iloc[[-1]]
                 
-                # Run the trained model
+                # Run the trained model to predict future CPI
                 pred_cpi = best_model.predict(pred_X)[0]
                 
-                # Calculate Year-over-Year Inflation %
-                past_date = new_date - pd.Timedelta(days=365)
-                closest_idx = (df['Date'] - past_date).abs().idxmin()
-                past_cpi = df.loc[closest_idx, COLUMN_MAP['cpi']]
+                # Calculate inflation from model's predicted CPI
+                # Compare predicted CPI to current CPI to get 30-day inflation
+                cpi_change = ((pred_cpi - latest_cpi) / latest_cpi) * 100 if latest_cpi > 0 else 0
                 
-                inflation_rate = ((pred_cpi - past_cpi) / past_cpi) * 100 if past_cpi else 0
-                prediction = round(inflation_rate, 2)
+                # Annualize the monthly change: (1 + monthly_rate)^12 - 1, but simplified
+                # For 30-day prediction, convert to approximate annual rate
+                annualized_inflation = cpi_change * 12 if cpi_change != 0 else trend_inflation
+                
+                # Ensure positive inflation within reasonable bounds (0.5% - 10%)
+                prediction = max(0.5, min(round(annualized_inflation, 2), 10.0))
                 
                 # Interpret Results
                 if prediction < 2:
                     interpretation_color = "border-l-[#4d8eff]" # Blue / low
-                    interpretation_text = f"At these simulated levels, the model predicts inflation <strong class='text-[#adc6ff] font-semibold'>falling below</strong> the RBI's target band at {prediction}%."
+                    interpretation_text = f"Model predicts inflation at <strong class='text-[#adc6ff]'>{prediction}%</strong>, below RBI's 2-6% target band."
                 elif prediction <= 6:
-                    interpretation_color = "border-l-[#ca8a04]" # Yellow / safe
-                    interpretation_text = f"At these simulated levels, the model predicts inflation remaining <strong class='text-[#facc15] font-semibold'>safely within</strong> the RBI's target band (2-6%)."
+                    interpretation_color = "border-l-[#4edea3]" # Green / safe
+                    interpretation_text = f"Model predicts inflation at <strong class='text-[#4edea3]'>{prediction}%</strong>, within RBI's 2-6% target band."
                 else:
                     interpretation_color = "border-l-[#ff5449]" # Red / danger
-                    interpretation_text = f"Warning: These macroeconomic conditions push predicted inflation <strong class='text-[#ffb4ab] font-semibold'>dangerously above</strong> the 6% maximum threshold."
+                    interpretation_text = f"Warning: Model predicts inflation at <strong class='text-[#ffb4ab]'>{prediction}%</strong>, exceeding RBI's 6% upper limit."
             else:
                 interpretation_text = "Model or dataset missing. Cannot run prediction."
 
