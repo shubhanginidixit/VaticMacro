@@ -275,38 +275,55 @@ def predict():
                 
                 cpi_col = COLUMN_MAP['cpi']
                 
-                # Calculate current inflation trends from actual data
+                # Calculate current inflation from actual recent data
                 latest_cpi = df[cpi_col].iloc[-1]
-                cpi_12m_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=365))).abs().idxmin()
-                cpi_12m_ago = df.loc[cpi_12m_ago_idx, cpi_col]
-                baseline_inflation = ((latest_cpi - cpi_12m_ago) / cpi_12m_ago) * 100 if cpi_12m_ago else 3.0
                 
-                # Calculate recent 3-month inflation for momentum
-                cpi_3m_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=90))).abs().idxmin()
-                cpi_3m_ago = df.loc[cpi_3m_ago_idx, cpi_col]
-                recent_inflation = ((latest_cpi - cpi_3m_ago) / cpi_3m_ago) * 100 * 4 if cpi_3m_ago else 3.0
+                # Use last 90 days average as baseline (accounts for flat periods)
+                cpi_90d_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=90))).abs().idxmin()
+                cpi_90d_ago = df.loc[cpi_90d_ago_idx, cpi_col]
+                recent_90d_inflation = ((latest_cpi - cpi_90d_ago) / cpi_90d_ago) * 100 * 4
                 
-                # Blend baseline and recent trends (75% baseline, 25% recent)
-                current_trend = (baseline_inflation * 0.75) + (recent_inflation * 0.25)
+                # Use last year average for stability
+                cpi_1y_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=365))).abs().idxmin()
+                cpi_1y_ago = df.loc[cpi_1y_ago_idx, cpi_col]
+                annual_inflation = ((latest_cpi - cpi_1y_ago) / cpi_1y_ago) * 100
                 
-                # Get historical inflation statistics for scenario impact calculation
-                historical_cpi = df[cpi_col].copy()
-                cpi_annual_change = historical_cpi.pct_change(periods=12) * 100
+                # If current period is flat, use recent historical average (last 2 years)
+                cpi_2y_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=730))).abs().idxmin()
+                cpi_2y_ago = df.loc[cpi_2y_ago_idx, cpi_col]
+                avg_inflation_2y = ((latest_cpi - cpi_2y_ago) / cpi_2y_ago) * 100 / 2
+                
+                # Fallback to 2-year average if current data is too flat
+                if abs(annual_inflation) < 0.5:
+                    current_trend = max(1.0, avg_inflation_2y)
+                else:
+                    current_trend = annual_inflation
+                
+                # Calculate historical statistics for bounds (use 2020-2024 data for reference)
+                historical_df = df[df['Date'] < '2025-01-01'].copy()  # Pre-2025 data
+                historical_cpi = historical_df[cpi_col].copy()
+                cpi_annual_change = historical_cpi.pct_change(periods=252) * 100  # Approximate annual
                 historical_inflation = cpi_annual_change.dropna()
+                
+                # Set bounds based on 2-3 years of pre-2025 history
                 inflation_mean = historical_inflation.mean()
                 inflation_std = historical_inflation.std()
-                inflation_min = historical_inflation.min()
-                inflation_max = historical_inflation.max()
-                inflation_p95 = historical_inflation.quantile(0.95)
+                inflation_min = historical_inflation.quantile(0.05)  # 5th percentile
+                inflation_max = historical_inflation.quantile(0.95)  # 95th percentile
                 
-                # Dynamic bounds based on data distribution
-                lower_bound = max(inflation_min, inflation_mean - 2 * inflation_std)
-                upper_bound = min(inflation_p95 * 1.2, inflation_max + inflation_std)
-                lower_bound = max(0.5, lower_bound)
-                upper_bound = min(12.0, max(upper_bound, 8.0))
+                # Dynamic bounds
+                lower_bound = max(0.5, inflation_min)
+                upper_bound = min(12.0, inflation_max * 1.1)
                 
-                # Now use ML model to understand scenario impact
-                # Create a scenario row with user inputs
+                # DEBUG: Show calculations
+                print(f"\n=== PREDICTION DEBUG ===")
+                print(f"Latest CPI: {latest_cpi:.4f}")
+                print(f"Annual Inflation (Y/Y): {annual_inflation:.2f}%")
+                print(f"2-Year Avg Inflation: {avg_inflation_2y:.2f}%")
+                print(f"Current Trend (used): {current_trend:.2f}%")
+                print(f"Historical Bounds: [{lower_bound:.2f}%, {upper_bound:.2f}%]")
+                
+                # Use model to predict scenario impact (how inputs affect inflation)
                 last_date = df['Date'].max()
                 new_date = last_date + pd.Timedelta(days=30)
                 
@@ -318,36 +335,23 @@ def predict():
                 new_row[COLUMN_MAP['gdp_proxy']] = val_gdp
                 new_row[COLUMN_MAP['wpi']] = val_wpi
                 
-                # Create prediction dataframe
                 df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 featured_df = create_features(df_pred)
-                
-                # Get features for prediction
                 pred_X = featured_df.drop(['Date', 'CPI'], axis=1, errors='ignore').iloc[[-1]]
-                pred_cpi = best_model.predict(pred_X)[0]
                 
-                # Calculate model's predicted CPI change
+                pred_cpi = best_model.predict(pred_X)[0]
                 cpi_change_model = ((pred_cpi - latest_cpi) / latest_cpi) * 100 if latest_cpi > 0 else 0
                 annualized_model_change = cpi_change_model * 12
                 
-                # The scenario impact is how much the model predicts it will differ from baseline
+                # Scenario impact (difference from baseline)
                 scenario_impact = annualized_model_change - current_trend
                 
-                # Final prediction = current trend + scenario impact
-                # But constrain to reasonable bounds
-                final_inflation = current_trend + (scenario_impact * 0.3)  # 30% weight on scenario impact
+                # Final prediction = current trend + small scenario adjustment
+                final_inflation = current_trend + (scenario_impact * 0.2)  # 20% scenario weight
                 
-                # DEBUG
-                print(f"\n=== PREDICTION DEBUG ===")
-                print(f"Latest CPI: {latest_cpi:.2f}")
-                print(f"Baseline Inflation (12-month): {baseline_inflation:.2f}%")
-                print(f"Recent Inflation (3-month annualized): {recent_inflation:.2f}%")
-                print(f"Current Trend (blended): {current_trend:.2f}%")
-                print(f"Model Predicted CPI: {pred_cpi:.2f}")
-                print(f"Model Prediction Change: {annualized_model_change:.2f}%")
+                print(f"Model Annualized Change: {annualized_model_change:.2f}%")
                 print(f"Scenario Impact: {scenario_impact:.2f}%")
-                print(f"Final Inflation (before bounds): {final_inflation:.2f}%")
-                print(f"Bounds: [{lower_bound:.2f}%, {upper_bound:.2f}%]")
+                print(f"Final (before bounds): {final_inflation:.2f}%")
                 
                 # Apply bounds
                 prediction = max(lower_bound, min(round(final_inflation, 2), upper_bound))
