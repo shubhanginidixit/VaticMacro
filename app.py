@@ -273,14 +273,36 @@ def predict():
                 df['Date'] = pd.to_datetime(df['Date'])
                 df = df.sort_values('Date').reset_index(drop=True)
                 
+                # Calculate historical inflation statistics for dynamic bounds
+                # This ensures bounds adapt as new data is added
+                cpi_col = COLUMN_MAP['cpi']
+                df['cpi_monthly_inflation'] = df[cpi_col].pct_change() * 100
+                df['cpi_annual_inflation'] = df[cpi_col].pct_change(periods=12) * 100
+                
+                # Get statistics from historical data (excluding NaN from pct_change)
+                historical_inflation = df['cpi_annual_inflation'].dropna()
+                inflation_mean = historical_inflation.mean()
+                inflation_std = historical_inflation.std()
+                inflation_min = historical_inflation.min()
+                inflation_max = historical_inflation.max()
+                inflation_p95 = historical_inflation.quantile(0.95)
+                
+                # Dynamic bounds based on data distribution
+                lower_bound = max(inflation_min, inflation_mean - 2 * inflation_std)
+                upper_bound = min(inflation_p95 * 1.2, inflation_max + inflation_std)
+                
+                # Ensure bounds are at least within 0.5% - 12% range
+                lower_bound = max(0.5, lower_bound)
+                upper_bound = min(12.0, max(upper_bound, 8.0))
+                
                 # Get current CPI and recent trend
                 latest_row = df.iloc[-1].copy()
-                latest_cpi = latest_row[COLUMN_MAP['cpi']]
+                latest_cpi = latest_row[cpi_col]
                 
                 # Get CPI from 90 days ago for short-term trend
                 past_90_idx = (df['Date'] - (latest_row['Date'] - pd.Timedelta(days=90))).abs().idxmin()
-                past_90_cpi = df.loc[past_90_idx, COLUMN_MAP['cpi']]
-                trend_inflation = ((latest_cpi - past_90_cpi) / past_90_cpi) * 100 if past_90_cpi else 2.5
+                past_90_cpi = df.loc[past_90_idx, cpi_col]
+                trend_inflation = ((latest_cpi - past_90_cpi) / past_90_cpi) * 100 if past_90_cpi else inflation_mean
                 
                 # Create a new row representing our "scenario" day
                 last_date = df['Date'].max()
@@ -295,13 +317,14 @@ def predict():
                 new_row[COLUMN_MAP['wpi']] = val_wpi
                 
                 # Append the scenario row
-                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                df_pred = pd.concat([df.drop('cpi_monthly_inflation', axis=1).drop('cpi_annual_inflation', axis=1), 
+                                    pd.DataFrame([new_row])], ignore_index=True)
                 
                 # Generate all lag/rolling features!
-                featured_df = create_features(df)
+                featured_df = create_features(df_pred)
                 
                 # Extract the final row containing the full context for prediction
-                pred_X = featured_df.drop(['Date', 'CPI'], axis=1).iloc[[-1]]
+                pred_X = featured_df.drop(['Date', 'CPI'], axis=1, errors='ignore').iloc[[-1]]
                 
                 # Run the trained model to predict future CPI
                 pred_cpi = best_model.predict(pred_X)[0]
@@ -310,12 +333,12 @@ def predict():
                 # Compare predicted CPI to current CPI to get 30-day inflation
                 cpi_change = ((pred_cpi - latest_cpi) / latest_cpi) * 100 if latest_cpi > 0 else 0
                 
-                # Annualize the monthly change: (1 + monthly_rate)^12 - 1, but simplified
-                # For 30-day prediction, convert to approximate annual rate
+                # Annualize the 30-day change properly
                 annualized_inflation = cpi_change * 12 if cpi_change != 0 else trend_inflation
                 
-                # Ensure positive inflation within reasonable bounds (0.5% - 10%)
-                prediction = max(0.5, min(round(annualized_inflation, 2), 10.0))
+                # Apply dynamic bounds instead of hard-coded values
+                # Bounds adapt based on historical data distribution
+                prediction = max(lower_bound, min(round(annualized_inflation, 2), upper_bound))
                 
                 # Interpret Results
                 if prediction < 2:
