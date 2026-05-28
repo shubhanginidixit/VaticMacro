@@ -255,8 +255,8 @@ def models():
             r2_val = float(r2_val)
         except Exception:
             r2_val = 0.0
-        # Store a display-safe R2 (non-negative)
-        m["r2_mean"] = max(0.0, r2_val)
+        # Preserve actual R2 for display (do not clamp here)
+        m["r2_mean"] = r2_val
 
         if m.get("name") == best_model_name:
             best_model_r2 = m.get("r2_mean", 0)
