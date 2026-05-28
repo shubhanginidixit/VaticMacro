@@ -205,12 +205,48 @@ def models():
             print(f"Error loading metrics: {e}")
             
     best_model_name = metrics_data.get("best_model", "Unknown")
-    models_metrics = metrics_data.get("metrics", [])
-    
+
+    # `metrics.json` may be saved in multiple formats depending on training scripts.
+    # Older format: a top-level "metrics" list with dicts for each model.
+    # Newer/alternate format: top-level keys per model (e.g., "ridge", "random_forest")
+    models_metrics = []
+
+    if isinstance(metrics_data.get("metrics"), list):
+        models_metrics = metrics_data.get("metrics", [])
+    else:
+        # Convert dict-of-models format into a list consumable by the template.
+        for key, val in metrics_data.items():
+            if key == "best_model":
+                continue
+            if not isinstance(val, dict):
+                continue
+            name = val.get("name") or key.replace("_", " ").title()
+
+            def _mean_or_value(x):
+                try:
+                    if isinstance(x, list) and len(x) > 0:
+                        return float(sum(x) / len(x))
+                    if x is None:
+                        return 0.0
+                    return float(x)
+                except Exception:
+                    return 0.0
+
+            r2_mean = _mean_or_value(val.get("r2") or val.get("r2_mean"))
+            mae_mean = _mean_or_value(val.get("mae"))
+            rmse_mean = _mean_or_value(val.get("rmse"))
+
+            models_metrics.append({
+                "name": name,
+                "r2_mean": r2_mean,
+                "mae": mae_mean,
+                "rmse": rmse_mean
+            })
+
     best_model_r2 = 0
     best_model_mae = 0
     best_model_rmse = 0
-    
+
     for m in models_metrics:
         if m.get("name") == best_model_name:
             best_model_r2 = m.get("r2_mean", m.get("r2", 0))
