@@ -29,17 +29,18 @@ def train(df):
     Returns:
         The best trained model (Pipeline with scaler + Ridge)
     """
-    # **IMPORTANT**: Only train on 2000-2022 data for generalization
+    # **IMPORTANT**: Prefer a recent training window to reduce regime-shift damage
     # We train the model to predict Year-over-Year (YoY) inflation (%) rather than raw CPI.
     # Use merge_asof to find the nearest year-ago CPI for each training date.
     df = df.sort_values('Date').reset_index(drop=True)
-    training_df = df[df['Date'] < '2023-01-01'].copy()
+    recent_start = pd.Timestamp('2010-01-01')
+    training_df = df[(df['Date'] >= recent_start) & (df['Date'] < '2023-01-01')].copy().reset_index(drop=True)
     
     if len(training_df) < 100:
-        print(f"WARNING: Only {len(training_df)} rows for training. Using all data.")
-        training_df = df.copy()
+        print(f"WARNING: Only {len(training_df)} rows for recent-window training. Falling back to full pre-2023 data.")
+        training_df = df[df['Date'] < '2023-01-01'].copy().reset_index(drop=True)
     else:
-        print(f"Training on 2000-2022 data ({len(training_df)} rows)")
+        print(f"Training on recent-window data since {recent_start.date()} ({len(training_df)} rows)")
         print(f"Full dataset has {len(df)} rows")
     
     # Find the matching year-ago CPI for each training row using nearest-date merge
@@ -47,7 +48,6 @@ def train(df):
     left['base_date'] = left['Date'] - pd.Timedelta(days=365)
     right = df[['Date', 'CPI']].sort_values('Date').copy()
     merged = pd.merge_asof(left, right, left_on='base_date', right_on='Date', direction='nearest', suffixes=('', '_base'))
-    training_df = training_df.loc[merged.index].copy()
     training_df['CPI_base'] = merged['CPI_base'].values
 
     # Calculate YoY inflation (%) as the target and drop rows without a valid year-ago CPI
@@ -130,6 +130,7 @@ def train(df):
             'best_model': chosen,
             'ridge': {'r2': [float(x) for x in ridge_r2], 'mae': [float(x) for x in ridge_mae]},
             'random_forest': {'r2': [float(x) for x in rf_r2], 'mae': [float(x) for x in rf_mae]},
+            'xgboost': {'r2': [float(x) for x in xgb_r2], 'mae': [float(x) for x in xgb_mae]},
         }, f, indent=4)
 
     print(f"\nChosen model: {chosen} (mean R2: {np.mean(chosen_r2):.4f})")
