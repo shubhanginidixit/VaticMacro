@@ -68,7 +68,7 @@
 <td class="px-4 py-3 {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ model.name }}</td>
 <td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.mae) }}%</td>
 <td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.rmse) }}%</td>
-<td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.r2) }}</td>
+<td class="px-4 py-3 text-right {% if model.name == best_model_name %}text-[#adc6ff] font-semibold{% endif %}">{{ "%.2f"|format(model.r2_mean if model.r2_mean is defined else model.r2) }}</td>
 </tr>
 {% endfor %}
 {% else %}
