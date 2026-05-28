@@ -1,20 +1,21 @@
 import os
+import json
+
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression, Ridge
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import KFold
-import json
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 def train(df):
     """
     Train Ridge Regression with K-fold cross-validation on 2000-2022 data.
     Uses percentage-change features for generalization across any year.
-    
+
     Ridge regression with K-fold CV ensures:
     - Model generalizes to unseen years (2026, 2027, etc.)
     - No overfitting to specific value ranges
@@ -41,21 +42,11 @@ def train(df):
     X = training_df.drop(['Date', 'CPI'], axis=1)
     y = training_df['CPI']
 
-    # K-fold cross-validation setup
+    # K-fold cross-validation setup.
     kfold = KFold(n_splits=5, shuffle=False)
-    
-    # Models: Ridge with K-fold CV is the priority, Linear Regression for comparison
-    models = {
-        'Ridge (K-fold CV)': Pipeline([
-            ('scaler', StandardScaler()),
-            ('model', Ridge(alpha=1.0, random_state=42))  # Default alpha=1.0, L2 regularization
-        ]),
-        'Linear Regression': Pipeline([
-            ('scaler', StandardScaler()),
-            ('model', LinearRegression())
-        ])
-    }
 
+    # Tune Ridge alpha on a log scale and keep the best setting.
+    ridge_alphas = [0.001, 0.01, 0.1, 1.0, 3.0, 10.0, 30.0, 100.0]
     results = []
     best_r2 = -float('inf')
     best_model_name = ""
@@ -66,79 +57,118 @@ def train(df):
     print("\nTraining and evaluating models with K-fold Cross-Validation...")
     print("-" * 70)
 
-    for model_name, pipeline in models.items():
+    # Tune Ridge alpha first so the saved model uses the best regularization.
+    ridge_results = []
+    best_ridge_alpha = None
+    best_ridge_score = -float('inf')
+
+    print("\nRidge alpha search:")
+    print(f"{'Alpha':<12} {'MAE':<12} {'RMSE':<12} {'R2':<12}")
+    print("-" * 52)
+
+    for alpha in ridge_alphas:
         fold_scores = []
         fold_mae = []
         fold_rmse = []
-        all_preds = np.array([])
-        all_actual = np.array([])
-        
-        print(f"\n{model_name}:")
-        print(f"{'Fold':<6} {'MAE':<12} {'RMSE':<12} {'R2':<12}")
-        print("-" * 42)
 
-        for fold, (train_idx, test_idx) in enumerate(kfold.split(X), 1):
+        for train_idx, test_idx in kfold.split(X):
             X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
             y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-            # Train pipeline
             pipeline_copy = Pipeline([
                 ('scaler', StandardScaler()),
-                ('model', Ridge(alpha=1.0, random_state=42) if 'Ridge' in model_name 
-                         else LinearRegression())
+                ('model', Ridge(alpha=alpha, random_state=42))
             ])
             pipeline_copy.fit(X_train, y_train)
-
-            # Predict
             preds = pipeline_copy.predict(X_test)
 
-            # Evaluate
-            mae = mean_absolute_error(y_test, preds)
-            mse = mean_squared_error(y_test, preds)
-            rmse = np.sqrt(mse)
-            r2 = r2_score(y_test, preds)
+            fold_scores.append(r2_score(y_test, preds))
+            fold_mae.append(mean_absolute_error(y_test, preds))
+            fold_rmse.append(np.sqrt(mean_squared_error(y_test, preds)))
 
-            fold_scores.append(r2)
-            fold_mae.append(mae)
-            fold_rmse.append(rmse)
-            
-            print(f"{fold:<6} {mae:<12.4f} {rmse:<12.4f} {r2:<12.4f}")
-
-            # Collect predictions for overall evaluation
-            all_preds = np.append(all_preds, preds)
-            all_actual = np.append(all_actual, y_test.values)
-
-        # Average across folds
-        avg_r2 = np.mean(fold_scores)
-        std_r2 = np.std(fold_scores)
-        avg_mae = np.mean(fold_mae)
-        avg_rmse = np.mean(fold_rmse)
-
-        print("-" * 42)
-        print(f"{'Avg:':<6} {avg_mae:<12.4f} {avg_rmse:<12.4f} {avg_r2:<12.4f} (±{std_r2:.4f})\n")
-
-        results.append({
-            'name': model_name,
+        avg_r2 = float(np.mean(fold_scores))
+        avg_mae = float(np.mean(fold_mae))
+        avg_rmse = float(np.mean(fold_rmse))
+        ridge_results.append({
+            'alpha': alpha,
             'mae': round(avg_mae, 4),
             'rmse': round(avg_rmse, 4),
             'r2_mean': round(avg_r2, 4),
-            'r2_std': round(std_r2, 4),
-            'folds': [round(score, 4) for score in fold_scores]
+            'r2_std': round(float(np.std(fold_scores)), 4),
+            'folds': [round(float(score), 4) for score in fold_scores]
         })
+        print(f"{alpha:<12} {avg_mae:<12.4f} {avg_rmse:<12.4f} {avg_r2:<12.4f}")
 
-        # Track best model by average R2 score
-        if avg_r2 > best_r2:
-            best_r2 = avg_r2
-            best_model_name = model_name
-            best_model = Pipeline([
-                ('scaler', StandardScaler()),
-                ('model', Ridge(alpha=1.0, random_state=42) if 'Ridge' in model_name
-                         else LinearRegression())
-            ])
-            # Re-train on full training set for final model
-            best_model.fit(X, y)
-            all_fold_predictions = all_preds
-            all_fold_actual = all_actual
+        if avg_r2 > best_ridge_score:
+            best_ridge_score = avg_r2
+            best_ridge_alpha = alpha
+
+    print("-" * 52)
+    print(f"Best Ridge alpha: {best_ridge_alpha} (R2: {best_ridge_score:.4f})\n")
+
+    model_name = f'Ridge (alpha={best_ridge_alpha})'
+    fold_scores = []
+    fold_mae = []
+    fold_rmse = []
+    all_preds = np.array([])
+    all_actual = np.array([])
+
+    print(f"\n{model_name}:")
+    print(f"{'Fold':<6} {'MAE':<12} {'RMSE':<12} {'R2':<12}")
+    print("-" * 42)
+
+    for fold, (train_idx, test_idx) in enumerate(kfold.split(X), 1):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+        pipeline_copy = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', Ridge(alpha=best_ridge_alpha, random_state=42))
+        ])
+        pipeline_copy.fit(X_train, y_train)
+
+        preds = pipeline_copy.predict(X_test)
+
+        mae = mean_absolute_error(y_test, preds)
+        mse = mean_squared_error(y_test, preds)
+        rmse = np.sqrt(mse)
+        r2 = r2_score(y_test, preds)
+
+        fold_scores.append(r2)
+        fold_mae.append(mae)
+        fold_rmse.append(rmse)
+
+        print(f"{fold:<6} {mae:<12.4f} {rmse:<12.4f} {r2:<12.4f}")
+
+        all_preds = np.append(all_preds, preds)
+        all_actual = np.append(all_actual, y_test.values)
+
+    avg_r2 = np.mean(fold_scores)
+    std_r2 = np.std(fold_scores)
+    avg_mae = np.mean(fold_mae)
+    avg_rmse = np.mean(fold_rmse)
+
+    print("-" * 42)
+    print(f"{'Avg:':<6} {avg_mae:<12.4f} {avg_rmse:<12.4f} {avg_r2:<12.4f} (±{std_r2:.4f})\n")
+
+    results.append({
+        'name': model_name,
+        'mae': round(avg_mae, 4),
+        'rmse': round(avg_rmse, 4),
+        'r2_mean': round(avg_r2, 4),
+        'r2_std': round(std_r2, 4),
+        'folds': [round(score, 4) for score in fold_scores]
+    })
+
+    best_r2 = avg_r2
+    best_model_name = model_name
+    best_model = Pipeline([
+        ('scaler', StandardScaler()),
+        ('model', Ridge(alpha=best_ridge_alpha, random_state=42))
+    ])
+    best_model.fit(X, y)
+    all_fold_predictions = all_preds
+    all_fold_actual = all_actual
 
     print("=" * 70)
     print(f"✓ Best Model: {best_model_name} (R2: {best_r2:.4f})")
@@ -147,8 +177,14 @@ def train(df):
     # Ensure models directory exists
     os.makedirs("models", exist_ok=True)
 
-    # Save the best model pipeline (includes the scaler)
-    joblib.dump(best_model, "models/best_model.pkl")
+    # Save the best model pipeline together with the exact training column order.
+    model_artifact = {
+        "pipeline": best_model,
+        "feature_columns": list(X.columns),
+        "best_ridge_alpha": best_ridge_alpha,
+        "model_name": best_model_name,
+    }
+    joblib.dump(model_artifact, "models/best_model.pkl")
 
     # Build prediction chart data from cross-validation results
     chart_sample = min(24, len(all_fold_predictions))
@@ -162,8 +198,11 @@ def train(df):
     with open("models/metrics.json", "w") as f:
         json.dump({
             "best_model": best_model_name,
-            "method": "K-Fold Cross-Validation",
+            "method": "Time-Series Cross-Validation",
             "features": "Percentage Changes (% changes instead of absolute values)",
+            "ridge_alpha_search": ridge_results,
+            "best_ridge_alpha": best_ridge_alpha,
+            "feature_columns": list(X.columns),
             "training_data": "2000-2022 only for generalization to future years",
             "metrics": results,
             "prediction_chart": {

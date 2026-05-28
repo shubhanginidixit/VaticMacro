@@ -32,7 +32,7 @@ def create_features(df):
     # **KEY**: Use PERCENTAGE CHANGES instead of raw values
     # This makes features comparable across different time periods
     indicator_cols = [col for col in df.columns if col not in ['Date', 'CPI']]
-    
+
     # Create percentage change features (how much did each indicator change?)
     for col in indicator_cols:
         # Different timeframes for momentum

@@ -17,8 +17,12 @@ MODEL_PATH = "models/best_model.pkl"
 METRICS_PATH = "models/metrics.json"
 DATA_PATH = "data/inflation_dataset.csv"
 
+FEATURE_COLUMNS = None
 try:
     best_model = joblib.load(MODEL_PATH)
+    if isinstance(best_model, dict):
+        FEATURE_COLUMNS = best_model.get("feature_columns")
+        best_model = best_model.get("pipeline")
 except Exception as e:
     print(f"Warning: Could not load model at {MODEL_PATH}. Error: {e}")
     best_model = None
@@ -239,9 +243,12 @@ def predict():
     prediction = None
     interpretation_text = ""
     interpretation_color = "border-l-primary"
+    model_used = "Ridge (K-fold CV)"
     
     if request.method == 'POST':
         try:
+            raw_date = request.form.get('scenario_date')
+
             # Extract values from form safely
             raw_wpi = request.form.get('wpi_index')
             val_wpi = float(raw_wpi) if raw_wpi else current_values['wpi_index']
@@ -266,6 +273,8 @@ def predict():
                 'brent_crude': val_brent,
                 'gdp_proxy': val_gdp
             }
+
+            scenario_date = pd.to_datetime(raw_date) if raw_date else None
             
             if best_model and os.path.exists(DATA_PATH):
                 # Load the raw dataset
@@ -278,7 +287,10 @@ def predict():
                 
                 # Create a scenario row with user inputs
                 last_date = df['Date'].max()
-                new_date = last_date + pd.Timedelta(days=30)
+                new_date = scenario_date if scenario_date is not None else last_date + pd.Timedelta(days=30)
+                base_date = new_date - pd.Timedelta(days=365)
+                base_idx = (df['Date'] - base_date).abs().idxmin()
+                base_cpi = df.loc[base_idx, cpi_col]
                 
                 new_row = df.iloc[-1].copy()
                 new_row['Date'] = new_date
@@ -292,22 +304,26 @@ def predict():
                 df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 featured_df = create_features(df_pred)
                 
-                # Get the last row's features for prediction
+                # Get the last row's features for prediction and align with training columns.
                 pred_X = featured_df.drop(['Date', 'CPI'], axis=1, errors='ignore').iloc[[-1]]
+                if FEATURE_COLUMNS:
+                    pred_X = pred_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
                 
                 # Ridge Regression directly predicts CPI based on percentage-change features
-                # This works for any year (2000-2022 training generalizes to 2026+)
+                # This works for any year (2000-2022 training generalizes to future dates)
                 pred_cpi = best_model.predict(pred_X)[0]
                 
-                # Calculate inflation from predicted vs current CPI
-                inflation_prediction = ((pred_cpi - latest_cpi) / latest_cpi) * 100 * 12
+                # Calculate YoY inflation using the matching year-ago CPI base
+                inflation_prediction = ((pred_cpi - base_cpi) / base_cpi) * 100 if base_cpi else 0
                 
-                # Ridge is well-regularized, so predictions should be reasonable
-                # Bound to realistic range just to be safe (0.5% - 8%)
-                prediction = max(0.5, min(round(inflation_prediction, 2), 8.0))
+                # Keep the raw model output so different inputs produce different values.
+                prediction = round(float(inflation_prediction), 2)
+                display_prediction = prediction
                 
                 print(f"\n=== RIDGE REGRESSION PREDICTION (K-fold CV) ===")
+                print(f"Scenario Date: {new_date.date()}")
                 print(f"Latest CPI: {latest_cpi:.4f}")
+                print(f"Base CPI (year-ago nearest): {base_cpi:.4f}")
                 print(f"Predicted CPI (30-day forward): {pred_cpi:.4f}")
                 print(f"Inflation Rate: {prediction}%")
                 print(f"(Ridge Regression trained on 2000-2022 percentage-change features)")
@@ -333,9 +349,12 @@ def predict():
             
     return render_template('predict_page.html', 
                            current_values=current_values,
+                           scenario_date=(request.form.get('scenario_date') if request.method == 'POST' else ""),
                            prediction=prediction,
+                           display_prediction=display_prediction if request.method == 'POST' else None,
                            interpretation_text=interpretation_text,
-                           interpretation_color=interpretation_color)
+                           interpretation_color=interpretation_color,
+                           model_used=model_used)
 
 @app.route('/forecast')
 def forecast():
@@ -399,9 +418,7 @@ def forecast():
 
 @app.route('/about')
 def about():
-    if os.path.exists(os.path.join(app.template_folder, 'about.html')):
-        return render_template('about.html')
-    return "<h1 style='color:white; font-family:sans-serif; text-align:center; padding-top: 50px;'>About Page Placeholder</h1><p style='color:white; text-align:center;'>Paste the HTML when ready!</p>"
+    return render_template('about.html')
 
 # Material Design 3 UI Routes (with real data)
 @app.route('/home')
@@ -423,6 +440,7 @@ def predict_ui():
 @app.route('/forecast-ui')
 def forecast_ui():
     return forecast()  # Use the actual forecast route with real data
+
 
 if __name__ == '__main__':
     print("Starting VaticMacro Flask Server...")
