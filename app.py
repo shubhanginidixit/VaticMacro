@@ -173,7 +173,7 @@ def analysis():
     analysis_context['corr_matrix'] = corr_matrix
     analysis_context['features'] = list(corr_cols.values())
 
-    return render_template('analysis.html', **analysis_context)
+    return render_template('analysis_page.html', **analysis_context)
 
 @app.route('/models')
 def models():
@@ -216,7 +216,7 @@ def models():
         "best_model_predictions": [5.15, 5.0, 4.9, 4.8, 4.85, 5.1]
     }
             
-    return render_template('models.html', 
+    return render_template('models_page.html', 
                            best_model_name=best_model_name,
                            models_metrics=models_metrics,
                            best_model_r2=best_model_r2,
@@ -322,7 +322,7 @@ def predict():
             traceback.print_exc()
             interpretation_text = "An error occurred during calculation."
             
-    return render_template('predict.html', 
+    return render_template('predict_page.html', 
                            current_values=current_values,
                            prediction=prediction,
                            interpretation_text=interpretation_text,
