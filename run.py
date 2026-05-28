@@ -5,7 +5,18 @@ Run this file to start the application: python run.py
 Then open http://localhost:5000 in your browser
 """
 
-from app import app
+import importlib.util
+import os
+
+
+APP_PATH = os.path.join(os.path.dirname(__file__), "app.py")
+SPEC = importlib.util.spec_from_file_location("vaticmacro_app", APP_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"Unable to load Flask app from {APP_PATH}")
+
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+app = MODULE.app
 
 if __name__ == '__main__':
     print("\n" + "="*60)

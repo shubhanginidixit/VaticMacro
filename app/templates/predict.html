@@ -254,6 +254,11 @@
 </button>
 </div>
 </div>
+<!-- Scenario Date -->
+<div class="flex items-center justify-between group">
+<label class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Scenario Date</label>
+<input id="scenario_date" name="scenario_date" class="w-40 bg-[#141620] border border-[#2a2d3a] rounded px-3 py-2 text-right font-value-lg text-[16px] text-on-surface focus:ring-0" type="date" value="{{ scenario_date | default('') }}"/>
+</div>
 <!-- GDP Proxy -->
 <div class="flex items-center justify-between group">
 <label class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">GDP Proxy</label>
@@ -353,7 +358,7 @@
     <footer class="mt-8 pt-4 border-t border-subtle flex justify-between items-center relative z-10">
     <div class="flex items-center gap-2 text-outline">
     <span class="material-symbols-outlined text-[16px]">memory</span>
-    <span class="font-caption text-caption">Model Used: XGBoost</span>
+    <span class="font-caption text-caption">Model Used: {{ model_used }}</span>
     </div>
     <div class="font-caption text-caption text-on-surface-variant">
                                 Accuracy (R²) = <span class="text-secondary font-medium">0.94</span>
