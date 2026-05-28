@@ -4,11 +4,13 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import RidgeCV
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold
+from sklearn.model_selection import TimeSeriesSplit, cross_validate
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 
 
 def train(df):
@@ -28,7 +30,9 @@ def train(df):
         The best trained model (Pipeline with scaler + Ridge)
     """
     # **IMPORTANT**: Only train on 2000-2022 data for generalization
-    # Features are percentage changes, so they're comparable across any year
+    # We train the model to predict Year-over-Year (YoY) inflation (%) rather than raw CPI.
+    # Use merge_asof to find the nearest year-ago CPI for each training date.
+    df = df.sort_values('Date').reset_index(drop=True)
     training_df = df[df['Date'] < '2023-01-01'].copy()
     
     if len(training_df) < 100:
@@ -38,178 +42,95 @@ def train(df):
         print(f"Training on 2000-2022 data ({len(training_df)} rows)")
         print(f"Full dataset has {len(df)} rows")
     
-    # Prepare features and target
-    X = training_df.drop(['Date', 'CPI'], axis=1)
-    y = training_df['CPI']
+    # Find the matching year-ago CPI for each training row using nearest-date merge
+    left = training_df[['Date', 'CPI']].sort_values('Date').copy()
+    left['base_date'] = left['Date'] - pd.Timedelta(days=365)
+    right = df[['Date', 'CPI']].sort_values('Date').copy()
+    merged = pd.merge_asof(left, right, left_on='base_date', right_on='Date', direction='nearest', suffixes=('', '_base'))
+    training_df = training_df.loc[merged.index].copy()
+    training_df['CPI_base'] = merged['CPI_base'].values
 
-    # K-fold cross-validation setup.
-    kfold = KFold(n_splits=5, shuffle=False)
+    # Calculate YoY inflation (%) as the target and drop rows without a valid year-ago CPI
+    training_df['inflation_yoy'] = ((training_df['CPI'] - training_df['CPI_base']) / training_df['CPI_base']) * 100
+    training_df = training_df.dropna(subset=['inflation_yoy']).reset_index(drop=True)
 
-    # Tune Ridge alpha on a log scale and keep the best setting.
-    ridge_alphas = [0.001, 0.01, 0.1, 1.0, 3.0, 10.0, 30.0, 100.0]
-    results = []
-    best_r2 = -float('inf')
-    best_model_name = ""
-    best_model = None
-    all_fold_predictions = []
-    all_fold_actual = []
+    # Prepare features and target: drop Date, CPI and CPI_base; target is YoY inflation
+    X = training_df.drop(['Date', 'CPI', 'CPI_base', 'inflation_yoy'], axis=1)
+    y = training_df['inflation_yoy']
 
-    print("\nTraining and evaluating models with K-fold Cross-Validation...")
-    print("-" * 70)
+    # TimeSeriesSplit cross-validation and RidgeCV with RobustScaler
+    tscv = TimeSeriesSplit(n_splits=5)
 
-    # Tune Ridge alpha first so the saved model uses the best regularization.
-    ridge_results = []
-    best_ridge_alpha = None
-    best_ridge_score = -float('inf')
+    ridge_alphas = [0.01, 0.1, 1.0, 3.0, 10.0]
 
-    print("\nRidge alpha search:")
-    print(f"{'Alpha':<12} {'MAE':<12} {'RMSE':<12} {'R2':<12}")
-    print("-" * 52)
-
-    for alpha in ridge_alphas:
-        fold_scores = []
-        fold_mae = []
-        fold_rmse = []
-
-        for train_idx, test_idx in kfold.split(X):
-            X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
-            pipeline_copy = Pipeline([
-                ('scaler', StandardScaler()),
-                ('model', Ridge(alpha=alpha, random_state=42))
-            ])
-            pipeline_copy.fit(X_train, y_train)
-            preds = pipeline_copy.predict(X_test)
-
-            fold_scores.append(r2_score(y_test, preds))
-            fold_mae.append(mean_absolute_error(y_test, preds))
-            fold_rmse.append(np.sqrt(mean_squared_error(y_test, preds)))
-
-        avg_r2 = float(np.mean(fold_scores))
-        avg_mae = float(np.mean(fold_mae))
-        avg_rmse = float(np.mean(fold_rmse))
-        ridge_results.append({
-            'alpha': alpha,
-            'mae': round(avg_mae, 4),
-            'rmse': round(avg_rmse, 4),
-            'r2_mean': round(avg_r2, 4),
-            'r2_std': round(float(np.std(fold_scores)), 4),
-            'folds': [round(float(score), 4) for score in fold_scores]
-        })
-        print(f"{alpha:<12} {avg_mae:<12.4f} {avg_rmse:<12.4f} {avg_r2:<12.4f}")
-
-        if avg_r2 > best_ridge_score:
-            best_ridge_score = avg_r2
-            best_ridge_alpha = alpha
-
-    print("-" * 52)
-    print(f"Best Ridge alpha: {best_ridge_alpha} (R2: {best_ridge_score:.4f})\n")
-
-    model_name = f'Ridge (alpha={best_ridge_alpha})'
-    fold_scores = []
-    fold_mae = []
-    fold_rmse = []
-    all_preds = np.array([])
-    all_actual = np.array([])
-
-    print(f"\n{model_name}:")
-    print(f"{'Fold':<6} {'MAE':<12} {'RMSE':<12} {'R2':<12}")
-    print("-" * 42)
-
-    for fold, (train_idx, test_idx) in enumerate(kfold.split(X), 1):
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
-        pipeline_copy = Pipeline([
-            ('scaler', StandardScaler()),
-            ('model', Ridge(alpha=best_ridge_alpha, random_state=42))
-        ])
-        pipeline_copy.fit(X_train, y_train)
-
-        preds = pipeline_copy.predict(X_test)
-
-        mae = mean_absolute_error(y_test, preds)
-        mse = mean_squared_error(y_test, preds)
-        rmse = np.sqrt(mse)
-        r2 = r2_score(y_test, preds)
-
-        fold_scores.append(r2)
-        fold_mae.append(mae)
-        fold_rmse.append(rmse)
-
-        print(f"{fold:<6} {mae:<12.4f} {rmse:<12.4f} {r2:<12.4f}")
-
-        all_preds = np.append(all_preds, preds)
-        all_actual = np.append(all_actual, y_test.values)
-
-    avg_r2 = np.mean(fold_scores)
-    std_r2 = np.std(fold_scores)
-    avg_mae = np.mean(fold_mae)
-    avg_rmse = np.mean(fold_rmse)
-
-    print("-" * 42)
-    print(f"{'Avg:':<6} {avg_mae:<12.4f} {avg_rmse:<12.4f} {avg_r2:<12.4f} (±{std_r2:.4f})\n")
-
-    results.append({
-        'name': model_name,
-        'mae': round(avg_mae, 4),
-        'rmse': round(avg_rmse, 4),
-        'r2_mean': round(avg_r2, 4),
-        'r2_std': round(std_r2, 4),
-        'folds': [round(score, 4) for score in fold_scores]
-    })
-
-    best_r2 = avg_r2
-    best_model_name = model_name
-    best_model = Pipeline([
-        ('scaler', StandardScaler()),
-        ('model', Ridge(alpha=best_ridge_alpha, random_state=42))
+    # Try both RidgeCV and RandomForest (choose the better based on CV)
+    ridge_pipeline = Pipeline([
+        ('scaler', RobustScaler()),
+        ('model', RidgeCV(alphas=ridge_alphas, cv=tscv))
     ])
-    best_model.fit(X, y)
-    all_fold_predictions = all_preds
-    all_fold_actual = all_actual
 
-    print("=" * 70)
-    print(f"✓ Best Model: {best_model_name} (R2: {best_r2:.4f})")
-    print("=" * 70)
+    rf_pipeline = Pipeline([
+        ('scaler', RobustScaler()),
+        ('model', RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=1))
+    ])
 
-    # Ensure models directory exists
-    os.makedirs("models", exist_ok=True)
+    xgb_pipeline = Pipeline([
+        ('scaler', RobustScaler()),
+        ('model', XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, random_state=42, verbosity=0))
+    ])
 
-    # Save the best model pipeline together with the exact training column order.
-    model_artifact = {
-        "pipeline": best_model,
-        "feature_columns": list(X.columns),
-        "best_ridge_alpha": best_ridge_alpha,
-        "model_name": best_model_name,
+    scoring = {'r2': 'r2', 'mae': 'neg_mean_absolute_error'}
+
+    print('\nEvaluating RidgeCV via TimeSeriesSplit...')
+    ridge_res = cross_validate(ridge_pipeline, X, y, cv=tscv, scoring=scoring)
+    ridge_r2 = ridge_res['test_r2']
+    ridge_mae = -ridge_res['test_mae']
+    print('Ridge R2 per-fold:', ridge_r2)
+    print('Ridge MAE per-fold:', ridge_mae)
+
+    print('\nEvaluating RandomForest via TimeSeriesSplit...')
+    rf_res = cross_validate(rf_pipeline, X, y, cv=tscv, scoring=scoring)
+    rf_r2 = rf_res['test_r2']
+    rf_mae = -rf_res['test_mae']
+    print('RF R2 per-fold:', rf_r2)
+    print('RF MAE per-fold:', rf_mae)
+
+    print('\nEvaluating XGBoost via TimeSeriesSplit...')
+    xgb_res = cross_validate(xgb_pipeline, X, y, cv=tscv, scoring=scoring)
+    xgb_r2 = xgb_res['test_r2']
+    xgb_mae = -xgb_res['test_mae']
+    print('XGB R2 per-fold:', xgb_r2)
+    print('XGB MAE per-fold:', xgb_mae)
+
+    # Choose best model by mean R2 among Ridge, RF, and XGB
+    candidates = {
+        'RidgeCV': (ridge_pipeline, np.mean(ridge_r2), ridge_r2, ridge_mae),
+        'RandomForest': (rf_pipeline, np.mean(rf_r2), rf_r2, rf_mae),
+        'XGBoost': (xgb_pipeline, np.mean(xgb_r2), xgb_r2, xgb_mae)
     }
-    joblib.dump(model_artifact, "models/best_model.pkl")
+    # select model with highest mean R2
+    chosen_name = max(candidates.keys(), key=lambda k: candidates[k][1])
+    best_pipeline, _, chosen_r2, chosen_mae = candidates[chosen_name]
+    chosen = chosen_name
 
-    # Build prediction chart data from cross-validation results
-    chart_sample = min(24, len(all_fold_predictions))
-    indices = np.linspace(0, len(all_fold_predictions) - 1, chart_sample, dtype=int)
-    
-    chart_actual = [round(float(all_fold_actual[i]), 2) for i in indices]
-    chart_preds = [round(float(all_fold_predictions[i]), 2) for i in indices]
-    chart_dates = [f"CV_{i+1}" for i in range(chart_sample)]
+    best_pipeline.fit(X, y)
 
-    # Save evaluation metrics + prediction chart data to JSON
-    with open("models/metrics.json", "w") as f:
+    os.makedirs('models', exist_ok=True)
+    model_artifact = {
+        'pipeline': best_pipeline,
+        'feature_columns': list(X.columns),
+        'best_model_choice': chosen,
+        'model_name': f'{chosen}'
+    }
+    joblib.dump(model_artifact, 'models/best_model.pkl')
+
+    # Save metrics summary
+    with open('models/metrics.json', 'w') as f:
         json.dump({
-            "best_model": best_model_name,
-            "method": "Time-Series Cross-Validation",
-            "features": "Percentage Changes (% changes instead of absolute values)",
-            "ridge_alpha_search": ridge_results,
-            "best_ridge_alpha": best_ridge_alpha,
-            "feature_columns": list(X.columns),
-            "training_data": "2000-2022 only for generalization to future years",
-            "metrics": results,
-            "prediction_chart": {
-                "dates": chart_dates,
-                "actual": chart_actual,
-                "best_model_predictions": chart_preds
-            }
+            'best_model': chosen,
+            'ridge': {'r2': [float(x) for x in ridge_r2], 'mae': [float(x) for x in ridge_mae]},
+            'random_forest': {'r2': [float(x) for x in rf_r2], 'mae': [float(x) for x in rf_mae]},
         }, f, indent=4)
 
-    return best_model
+    print(f"\nChosen model: {chosen} (mean R2: {np.mean(chosen_r2):.4f})")
+    return best_pipeline

@@ -1,285 +1,35 @@
 {
-    "best_model": "Ridge (alpha=3.0)",
-    "method": "Time-Series Cross-Validation",
-    "features": "Percentage Changes (% changes instead of absolute values)",
-    "ridge_alpha_search": [
-        {
-            "alpha": 0.001,
-            "mae": 5.5675,
-            "rmse": 10.7152,
-            "r2_mean": -3.7498,
-            "r2_std": 8.9799,
-            "folds": [
-                0.593,
-                0.8643,
-                0.8994,
-                0.6021,
-                -21.7078
-            ]
-        },
-        {
-            "alpha": 0.01,
-            "mae": 4.3683,
-            "rmse": 6.541,
-            "r2_mean": -0.4662,
-            "r2_std": 2.4155,
-            "folds": [
-                0.5929,
-                0.8641,
-                0.8994,
-                0.6031,
-                -5.2905
-            ]
-        },
-        {
-            "alpha": 0.1,
-            "mae": 3.6629,
-            "rmse": 4.713,
-            "r2_mean": 0.3296,
-            "r2_std": 0.8326,
-            "folds": [
-                0.5919,
-                0.8623,
-                0.8995,
-                0.6108,
-                -1.3164
-            ]
-        },
-        {
-            "alpha": 1.0,
-            "mae": 3.5454,
-            "rmse": 4.4888,
-            "r2_mean": 0.4002,
-            "r2_std": 0.7022,
-            "folds": [
-                0.588,
-                0.8552,
-                0.8968,
-                0.6452,
-                -0.9841
-            ]
-        },
-        {
-            "alpha": 3.0,
-            "mae": 3.5373,
-            "rmse": 4.4542,
-            "r2_mean": 0.4133,
-            "r2_std": 0.6861,
-            "folds": [
-                0.5877,
-                0.8473,
-                0.8888,
-                0.684,
-                -0.9414
-            ]
-        },
-        {
-            "alpha": 10.0,
-            "mae": 3.6576,
-            "rmse": 4.6624,
-            "r2_mean": 0.3557,
-            "r2_std": 0.8055,
-            "folds": [
-                0.5786,
-                0.8279,
-                0.8652,
-                0.75,
-                -1.2431
-            ]
-        },
-        {
-            "alpha": 30.0,
-            "mae": 4.0048,
-            "rmse": 5.2518,
-            "r2_mean": 0.1513,
-            "r2_std": 1.178,
-            "folds": [
-                0.4979,
-                0.798,
-                0.822,
-                0.8301,
-                -2.1916
-            ]
-        },
-        {
-            "alpha": 100.0,
-            "mae": 5.0063,
-            "rmse": 6.6638,
-            "r2_mean": -0.5011,
-            "r2_std": 2.2111,
-            "folds": [
-                -0.0057,
-                0.7464,
-                0.7596,
-                0.873,
-                -4.8789
-            ]
-        }
-    ],
-    "best_ridge_alpha": 3.0,
-    "feature_columns": [
-        "datafilenew(india basket crude oil)",
-        "Average of DCOILBRENTEU",
-        "DEXINUS",
-        "INDLORSGPNOSTSAM",
-        "INTDSRINM193N",
-        "MKTGDPINA646NWDB",
-        "Unemployment Rate Annually",
-        "WPIATT01INM661N",
-        "datafilenew(india basket crude oil)_pct_change_30",
-        "datafilenew(india basket crude oil)_pct_change_90",
-        "datafilenew(india basket crude oil)_pct_change_180",
-        "Average of DCOILBRENTEU_pct_change_30",
-        "Average of DCOILBRENTEU_pct_change_90",
-        "Average of DCOILBRENTEU_pct_change_180",
-        "DEXINUS_pct_change_30",
-        "DEXINUS_pct_change_90",
-        "DEXINUS_pct_change_180",
-        "INDLORSGPNOSTSAM_pct_change_30",
-        "INDLORSGPNOSTSAM_pct_change_90",
-        "INDLORSGPNOSTSAM_pct_change_180",
-        "INTDSRINM193N_pct_change_30",
-        "INTDSRINM193N_pct_change_90",
-        "INTDSRINM193N_pct_change_180",
-        "MKTGDPINA646NWDB_pct_change_30",
-        "MKTGDPINA646NWDB_pct_change_90",
-        "MKTGDPINA646NWDB_pct_change_180",
-        "Unemployment Rate Annually_pct_change_30",
-        "Unemployment Rate Annually_pct_change_90",
-        "Unemployment Rate Annually_pct_change_180",
-        "WPIATT01INM661N_pct_change_30",
-        "WPIATT01INM661N_pct_change_90",
-        "WPIATT01INM661N_pct_change_180",
-        "datafilenew(india basket crude oil)_lag_pct_30",
-        "datafilenew(india basket crude oil)_lag_pct_90",
-        "Average of DCOILBRENTEU_lag_pct_30",
-        "Average of DCOILBRENTEU_lag_pct_90",
-        "DEXINUS_lag_pct_30",
-        "DEXINUS_lag_pct_90",
-        "INDLORSGPNOSTSAM_lag_pct_30",
-        "INDLORSGPNOSTSAM_lag_pct_90",
-        "INTDSRINM193N_lag_pct_30",
-        "INTDSRINM193N_lag_pct_90",
-        "MKTGDPINA646NWDB_lag_pct_30",
-        "MKTGDPINA646NWDB_lag_pct_90",
-        "Unemployment Rate Annually_lag_pct_30",
-        "Unemployment Rate Annually_lag_pct_90",
-        "WPIATT01INM661N_lag_pct_30",
-        "WPIATT01INM661N_lag_pct_90",
-        "datafilenew(india basket crude oil)_rolling_pct_avg_30",
-        "datafilenew(india basket crude oil)_rolling_pct_avg_90",
-        "Average of DCOILBRENTEU_rolling_pct_avg_30",
-        "Average of DCOILBRENTEU_rolling_pct_avg_90",
-        "DEXINUS_rolling_pct_avg_30",
-        "DEXINUS_rolling_pct_avg_90",
-        "INDLORSGPNOSTSAM_rolling_pct_avg_30",
-        "INDLORSGPNOSTSAM_rolling_pct_avg_90",
-        "INTDSRINM193N_rolling_pct_avg_30",
-        "INTDSRINM193N_rolling_pct_avg_90",
-        "MKTGDPINA646NWDB_rolling_pct_avg_30",
-        "MKTGDPINA646NWDB_rolling_pct_avg_90",
-        "Unemployment Rate Annually_rolling_pct_avg_30",
-        "Unemployment Rate Annually_rolling_pct_avg_90",
-        "WPIATT01INM661N_rolling_pct_avg_30",
-        "WPIATT01INM661N_rolling_pct_avg_90",
-        "oil_to_inr_ratio",
-        "oil_to_inr_pct_change"
-    ],
-    "training_data": "2000-2022 only for generalization to future years",
-    "metrics": [
-        {
-            "name": "Ridge (alpha=3.0)",
-            "mae": 3.5373,
-            "rmse": 4.4542,
-            "r2_mean": 0.4133,
-            "r2_std": 0.6861,
-            "folds": [
-                0.5877,
-                0.8473,
-                0.8888,
-                0.684,
-                -0.9414
-            ]
-        }
-    ],
-    "prediction_chart": {
-        "dates": [
-            "CV_1",
-            "CV_2",
-            "CV_3",
-            "CV_4",
-            "CV_5",
-            "CV_6",
-            "CV_7",
-            "CV_8",
-            "CV_9",
-            "CV_10",
-            "CV_11",
-            "CV_12",
-            "CV_13",
-            "CV_14",
-            "CV_15",
-            "CV_16",
-            "CV_17",
-            "CV_18",
-            "CV_19",
-            "CV_20",
-            "CV_21",
-            "CV_22",
-            "CV_23",
-            "CV_24"
+    "best_model": "XGBoost",
+    "ridge": {
+        "r2": [
+            -4.068538516579762,
+            -8.012152580272769,
+            -8.214607415208569,
+            -2.4221362923195233,
+            -1523.705720125617
         ],
-        "actual": [
-            36.81,
-            38.64,
-            40.13,
-            41.38,
-            43.28,
-            44.61,
-            47.43,
-            49.73,
-            53.55,
-            58.53,
-            65.8,
-            71.53,
-            78.42,
-            86.45,
-            91.42,
-            97.16,
-            102.52,
-            104.81,
-            109.79,
-            117.44,
-            126.24,
-            130.23,
-            137.83,
-            145.76
+        "mae": [
+            2.1910840013891675,
+            6.3081461918063075,
+            4.918135134769082,
+            2.529417034980672,
+            39.71583869696468
+        ]
+    },
+    "random_forest": {
+        "r2": [
+            -2.8307752063596583,
+            -8.64190343383744,
+            -3.344650445568127,
+            -0.24001830257854428,
+            -10.361340484014551
         ],
-        "best_model_predictions": [
-            34.58,
-            39.43,
-            41.48,
-            41.8,
-            42.96,
-            44.22,
-            48.74,
-            49.95,
-            52.01,
-            63.28,
-            65.51,
-            71.62,
-            71.91,
-            84.76,
-            94.92,
-            99.6,
-            106.21,
-            112.37,
-            111.9,
-            115.97,
-            108.6,
-            114.33,
-            124.07,
-            129.06
+        "mae": [
+            2.008327074043525,
+            6.577074530788171,
+            4.004523019810615,
+            1.560407981988136,
+            3.5433168271270556
         ]
     }
 }

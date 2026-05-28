@@ -109,7 +109,7 @@
 {% endif %}
 <div class="mt-8 pt-4 border-t border-[#2a2d3a] flex justify-between text-xs text-[#8c909f]">
 <span>Model Used: {{ model_used }}</span>
-<span>Accuracy (R²) = <span class="text-[#4edea3] font-medium">0.94</span></span>
+<span>Accuracy (R²) = <span class="text-[#4edea3] font-medium">{{ "%.2f"|format(model_r2) }}</span></span>
 </div>
 </div>
 </div>
