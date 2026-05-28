@@ -247,9 +247,19 @@ def models():
     best_model_mae = 0
     best_model_rmse = 0
 
+    # Clamp negative R² values for display only so UI doesn't show large negative numbers
     for m in models_metrics:
+        # normalize field names
+        r2_val = m.get("r2_mean", m.get("r2", 0))
+        try:
+            r2_val = float(r2_val)
+        except Exception:
+            r2_val = 0.0
+        # Store a display-safe R2 (non-negative)
+        m["r2_mean"] = max(0.0, r2_val)
+
         if m.get("name") == best_model_name:
-            best_model_r2 = m.get("r2_mean", m.get("r2", 0))
+            best_model_r2 = m.get("r2_mean", 0)
             best_model_mae = m.get("mae", 0)
             best_model_rmse = m.get("rmse", 0)
             break
