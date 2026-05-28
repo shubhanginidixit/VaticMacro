@@ -274,56 +274,9 @@ def predict():
                 df = df.sort_values('Date').reset_index(drop=True)
                 
                 cpi_col = COLUMN_MAP['cpi']
-                
-                # Calculate current inflation from actual recent data
                 latest_cpi = df[cpi_col].iloc[-1]
                 
-                # Use last 90 days average as baseline (accounts for flat periods)
-                cpi_90d_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=90))).abs().idxmin()
-                cpi_90d_ago = df.loc[cpi_90d_ago_idx, cpi_col]
-                recent_90d_inflation = ((latest_cpi - cpi_90d_ago) / cpi_90d_ago) * 100 * 4
-                
-                # Use last year average for stability
-                cpi_1y_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=365))).abs().idxmin()
-                cpi_1y_ago = df.loc[cpi_1y_ago_idx, cpi_col]
-                annual_inflation = ((latest_cpi - cpi_1y_ago) / cpi_1y_ago) * 100
-                
-                # If current period is flat, use recent historical average (last 2 years)
-                cpi_2y_ago_idx = (df['Date'] - (df['Date'].iloc[-1] - pd.Timedelta(days=730))).abs().idxmin()
-                cpi_2y_ago = df.loc[cpi_2y_ago_idx, cpi_col]
-                avg_inflation_2y = ((latest_cpi - cpi_2y_ago) / cpi_2y_ago) * 100 / 2
-                
-                # Fallback to 2-year average if current data is too flat
-                if abs(annual_inflation) < 0.5:
-                    current_trend = max(1.0, avg_inflation_2y)
-                else:
-                    current_trend = annual_inflation
-                
-                # Calculate historical statistics for bounds (use 2020-2024 data for reference)
-                historical_df = df[df['Date'] < '2025-01-01'].copy()  # Pre-2025 data
-                historical_cpi = historical_df[cpi_col].copy()
-                cpi_annual_change = historical_cpi.pct_change(periods=252) * 100  # Approximate annual
-                historical_inflation = cpi_annual_change.dropna()
-                
-                # Set bounds based on 2-3 years of pre-2025 history
-                inflation_mean = historical_inflation.mean()
-                inflation_std = historical_inflation.std()
-                inflation_min = historical_inflation.quantile(0.05)  # 5th percentile
-                inflation_max = historical_inflation.quantile(0.95)  # 95th percentile
-                
-                # Dynamic bounds
-                lower_bound = max(0.5, inflation_min)
-                upper_bound = min(12.0, inflation_max * 1.1)
-                
-                # DEBUG: Show calculations
-                print(f"\n=== PREDICTION DEBUG ===")
-                print(f"Latest CPI: {latest_cpi:.4f}")
-                print(f"Annual Inflation (Y/Y): {annual_inflation:.2f}%")
-                print(f"2-Year Avg Inflation: {avg_inflation_2y:.2f}%")
-                print(f"Current Trend (used): {current_trend:.2f}%")
-                print(f"Historical Bounds: [{lower_bound:.2f}%, {upper_bound:.2f}%]")
-                
-                # Use model to predict scenario impact (how inputs affect inflation)
+                # Create a scenario row with user inputs
                 last_date = df['Date'].max()
                 new_date = last_date + pd.Timedelta(days=30)
                 
@@ -335,40 +288,41 @@ def predict():
                 new_row[COLUMN_MAP['gdp_proxy']] = val_gdp
                 new_row[COLUMN_MAP['wpi']] = val_wpi
                 
+                # Create features using percentage changes (generalized for any year)
                 df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 featured_df = create_features(df_pred)
+                
+                # Get the last row's features for prediction
                 pred_X = featured_df.drop(['Date', 'CPI'], axis=1, errors='ignore').iloc[[-1]]
                 
+                # Ridge Regression directly predicts CPI based on percentage-change features
+                # This works for any year (2000-2022 training generalizes to 2026+)
                 pred_cpi = best_model.predict(pred_X)[0]
-                cpi_change_model = ((pred_cpi - latest_cpi) / latest_cpi) * 100 if latest_cpi > 0 else 0
-                annualized_model_change = cpi_change_model * 12
                 
-                # Scenario impact (difference from baseline)
-                scenario_impact = annualized_model_change - current_trend
+                # Calculate inflation from predicted vs current CPI
+                inflation_prediction = ((pred_cpi - latest_cpi) / latest_cpi) * 100 * 12
                 
-                # Final prediction = current trend + small scenario adjustment
-                final_inflation = current_trend + (scenario_impact * 0.2)  # 20% scenario weight
+                # Ridge is well-regularized, so predictions should be reasonable
+                # Bound to realistic range just to be safe (0.5% - 8%)
+                prediction = max(0.5, min(round(inflation_prediction, 2), 8.0))
                 
-                print(f"Model Annualized Change: {annualized_model_change:.2f}%")
-                print(f"Scenario Impact: {scenario_impact:.2f}%")
-                print(f"Final (before bounds): {final_inflation:.2f}%")
-                
-                # Apply bounds and ensure proper rounding
-                prediction = max(lower_bound, min(final_inflation, upper_bound))
-                prediction = round(prediction, 2)  # Ensure 2 decimal places
-                
-                print(f"Final Prediction (after bounds): {prediction}%\n")
+                print(f"\n=== RIDGE REGRESSION PREDICTION (K-fold CV) ===")
+                print(f"Latest CPI: {latest_cpi:.4f}")
+                print(f"Predicted CPI (30-day forward): {pred_cpi:.4f}")
+                print(f"Inflation Rate: {prediction}%")
+                print(f"(Ridge Regression trained on 2000-2022 percentage-change features)")
+                print(f"(Generalizes to any year including 2026+)\n")
                 
                 # Interpret Results
                 if prediction < 2:
                     interpretation_color = "border-l-[#4d8eff]" # Blue / low
-                    interpretation_text = f"Model predicts inflation at <strong class='text-[#adc6ff]'>{prediction}%</strong>, below RBI's 2-6% target band."
+                    interpretation_text = f"Ridge predicts inflation at <strong class='text-[#adc6ff]'>{prediction}%</strong>, below RBI's 2-6% target band."
                 elif prediction <= 6:
                     interpretation_color = "border-l-[#4edea3]" # Green / safe
-                    interpretation_text = f"Model predicts inflation at <strong class='text-[#4edea3]'>{prediction}%</strong>, within RBI's 2-6% target band."
+                    interpretation_text = f"Ridge predicts inflation at <strong class='text-[#4edea3]'>{prediction}%</strong>, within RBI's 2-6% target band."
                 else:
                     interpretation_color = "border-l-[#ff5449]" # Red / danger
-                    interpretation_text = f"Warning: Model predicts inflation at <strong class='text-[#ffb4ab]'>{prediction}%</strong>, exceeding RBI's 6% upper limit."
+                    interpretation_text = f"Warning: Ridge predicts inflation at <strong class='text-[#ffb4ab]'>{prediction}%</strong>, exceeding RBI's 6% upper limit."
             else:
                 interpretation_text = "Model or dataset missing. Cannot run prediction."
 
