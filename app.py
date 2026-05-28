@@ -353,8 +353,10 @@ def predict():
                 print(f"Scenario Impact: {scenario_impact:.2f}%")
                 print(f"Final (before bounds): {final_inflation:.2f}%")
                 
-                # Apply bounds
-                prediction = max(lower_bound, min(round(final_inflation, 2), upper_bound))
+                # Apply bounds and ensure proper rounding
+                prediction = max(lower_bound, min(final_inflation, upper_bound))
+                prediction = round(prediction, 2)  # Ensure 2 decimal places
+                
                 print(f"Final Prediction (after bounds): {prediction}%\n")
                 
                 # Interpret Results
