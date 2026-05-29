@@ -1,6 +1,6 @@
+flask==3.0.3
 pandas>=2.2.0
-numpy
-scikit-learn
-xgboost
-joblib
-Flask
+numpy>=2.2.0
+scikit-learn>=1.7.0
+xgboost>=3.2.0
+joblib>=1.5.0
