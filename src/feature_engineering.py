@@ -51,8 +51,8 @@ def create_features(df):
         df[f'{col}_rolling_pct_avg_90'] = df[f'{col}_pct_change_90'].rolling(window=90).mean()
     
     # Create ratios between key indicators (normalized relationships)
-    if 'WPIATT01INM661N' in df.columns and 'INDCPIALLMINMEI' in df.columns:
-        df['WPI_to_CPI_ratio'] = (df['WPIATT01INM661N'] / df['INDCPIALLMINMEI']) * 100
+    if 'WPIATT01INM661N' in df.columns and 'CPI' in df.columns:
+        df['WPI_to_CPI_ratio'] = (df['WPIATT01INM661N'] / df['CPI']) * 100
         df['WPI_to_CPI_pct_change'] = df['WPI_to_CPI_ratio'].pct_change(30) * 100
     
     if 'DEXINUS' in df.columns and 'Average of DCOILBRENTEU' in df.columns:
