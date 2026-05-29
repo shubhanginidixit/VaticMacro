@@ -14,6 +14,28 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
 
+# Clip wrapper to enforce RBI range and avoid negative predictions
+class ClipRegressor(BaseEstimator, RegressorMixin):
+    def __init__(self, estimator=None, min_value=None, max_value=None):
+        self.estimator = estimator
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def fit(self, X, y):
+        self.estimator_ = clone(self.estimator)
+        self.estimator_.fit(X, y)
+        return self
+
+    def predict(self, X):
+        preds = self.estimator_.predict(X)
+        preds = np.array(preds, dtype=float)
+        if self.min_value is not None:
+            preds = np.maximum(preds, self.min_value)
+        if self.max_value is not None:
+            preds = np.minimum(preds, self.max_value)
+        return preds
+
+
 def train(df):
     """
     Train Ridge Regression with K-fold cross-validation on 2000-2022 data.
@@ -69,26 +91,7 @@ def train(df):
     # RBI target range (default 2-6%). Can be adjusted if needed.
     rbi_min, rbi_max = 2.0, 6.0
 
-    # Clip wrapper to enforce RBI range and avoid negative predictions
-    class ClipRegressor(BaseEstimator, RegressorMixin):
-        def __init__(self, estimator=None, min_value=None, max_value=None):
-            self.estimator = estimator
-            self.min_value = min_value
-            self.max_value = max_value
-
-        def fit(self, X, y):
-            self.estimator_ = clone(self.estimator)
-            self.estimator_.fit(X, y)
-            return self
-
-        def predict(self, X):
-            preds = self.estimator_.predict(X)
-            preds = np.array(preds, dtype=float)
-            if self.min_value is not None:
-                preds = np.maximum(preds, self.min_value)
-            if self.max_value is not None:
-                preds = np.minimum(preds, self.max_value)
-            return preds
+    # ClipRegressor is defined at module scope for pickling
 
     ridge_pipeline = Pipeline([
         ('scaler', RobustScaler()),
