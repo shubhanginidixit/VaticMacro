@@ -2,252 +2,331 @@
 
 ## Indian Macroeconomic Inflation Prediction and Trend Forecasting
 
-VaticMacro is a machine learning framework for forecasting Indian inflation trends through analysis of domestic macroeconomic indicators, global market dynamics, and policy metrics. It predicts Year-over-Year (YoY) CPI inflation using engineered features from economic time-series data.
+VaticMacro is an advanced machine learning framework explicitly architected for the Indian economy. It is designed to forecast inflation trends through the rigorous analysis of domestic macroeconomic indicators, global market dynamics, and regional policy metrics. The system employs complex data analytics, statistical modeling, and predictive forecasting techniques to yield precise inflation estimates and actionable economic insights tailored to the Indian subcontinent.
 
-The platform provides policy-makers, researchers, and financial analysts with tools to evaluate inflation patterns, assess macroeconomic risks, and make data-driven decisions based on empirical economic projections.
+This platform empowers domestic policy-makers, researchers, institutional investors, and financial analysts to comprehensively evaluate regional inflation paradigms, assess macroeconomic risks within emerging markets, and execute data-driven strategic decisions based on empirical economic projections.
 
 ---
+
+# Problem and Solution
 
 ## Problem Statement
 
-Inflation prediction is challenging because it depends on interconnected systemic factors:
+Inflation serves as a critical barometer of macroeconomic health, exerting profound effects on purchasing power, capital allocation, municipal policy formulation, and corporate financial strategy.
 
-- Consumer Price Index (CPI) — monthly release frequency
-- Wholesale Price Index (WPI) — monthly
-- RBI Benchmark Interest Rates — monthly
-- GDP Growth Trajectories — annual (daily proxy used)
-- Unemployment Rate — annual
-- USD/INR Exchange Rate — daily
-- Brent Crude Oil Prices — daily
+The accurate prediction of intra- and inter-period inflation is a multifaceted challenge, largely due to its dependency on a vast array of interconnected systemic factors, which include:
 
-**Key challenge:** These indicators are released at different frequencies (daily, monthly, annual). Naively merging them into daily rows creates 96% redundant data (forward-filled CPI across business days), which destroys model performance. VaticMacro solves this through monthly resampling before training.
+- Consumer Price Index (CPI)
+- Wholesale Price Index (WPI)
+- Benchmark Interest Rates
+- Gross Domestic Product (GDP) Growth Trajectories
+- Unemployment Metrics
+- Foreign Exchange Rate Volatility
+- Commodity and Energy Valuations
+- Aggregate Money Supply
 
----
+Conventional forecasting paradigms often fail to discern non-linear or emergent patterns within voluminous economic datasets and frequently lack the agility required to model dynamic macroeconomic shifts.
 
-## Methodology
-
-VaticMacro's pipeline:
-
-1. **Data Aggregation** — Merges 8 economic indicators from FRED/RBI sources into a unified daily dataset (`inflation_dataset.csv`)
-2. **Monthly Resampling** — Resamples to monthly frequency, eliminating forward-fill redundancy
-3. **Feature Engineering** — Creates percentage-change features (30/90/180-day), lag features, rolling averages, and cross-indicator ratios
-4. **Autoregressive Features** — Adds inflation lag-1, lag-3, lag-6, and rolling means (strongest predictors due to inflation persistence)
-5. **Feature Selection** — Drops features with |correlation| < 0.1 to target, reducing noise
-6. **Model Training** — Trains RidgeCV, RandomForest, and XGBoost with TimeSeriesSplit cross-validation
-7. **Model Selection** — Automatically selects best model by mean R² across folds
-
-### Why RidgeCV Wins
-
-With only ~216 monthly observations, tree-based models (RF, XGB) overfit. RidgeCV with autoregressive features achieves **R² = 0.71, MAE = 0.67%** — meaning predictions are typically within 0.67 percentage points of actual inflation.
+As global economies grow increasingly interconnected, the necessity for robust, data-driven analytical solutions capable of parsing multivariate economic indicators to synthesize dependable inflation forecasts has become paramount.
 
 ---
 
-## Model Performance
+## The VaticMacro Methodology
 
-| Model | Mean R² | Mean MAE | Mean RMSE |
-|-------|---------|----------|-----------|
-| **RidgeCV** | **0.711** | **0.67%** | **0.85%** |
-| XGBoost | 0.074 | 1.28% | 1.58% |
-| RandomForest | 0.051 | 1.32% | 1.60% |
+VaticMacro centralizes the complex process of economic trend analysis and inflation projection.
 
-Evaluated using 5-fold TimeSeriesSplit cross-validation on monthly data from 2005–2022.
+The framework systematically:
+
+- Aggregates and normalizes historical macroeconomic data.
+- Quantifies correlations and causal relationships among primary economic indicators.
+- Implements advanced machine learning topologies to forecast inflation velocity.
+- Renders multi-dimensional economic patterns through comprehensive visual dashboards.
+- Validates predictive efficacy utilizing industry-standard statistical evaluation metrics.
+- Synthesizes complex outputs into actionable strategic intelligence.
+
+By translating dense economic datasets into coherent predictive models, VaticMacro provides stakeholders with the requisite intelligence to anticipate future macroeconomic conditions and formulate rigorous strategic responses.
 
 ---
 
-## Core Capabilities
+# Core Capabilities
 
-### Economic Data Analysis
+## Economic Data Analysis
+
 - Historical inflation trend aggregation
-- Multivariate correlation analysis with data-driven key findings
-- Time-series visualization of all major economic indicators
-- Distribution analysis (histograms) for each indicator
+- Economic indicator benchmarking and comparison
+- Multivariate correlation analysis
+- Rigorous data preprocessing and normalization
+- Advanced feature engineering and selection
 
-### Machine Learning Forecasting
-- YoY inflation prediction using percentage-change features
-- Scenario-based prediction (adjust WPI, interest rates, exchange rates, oil, GDP)
-- Autoregressive modeling (past inflation predicts future inflation)
+---
 
-**Supported Models:**
-- RidgeCV (Regularized Linear Regression with built-in cross-validation)
+## Machine Learning Forecasting
+
+- Inflation trajectory prediction utilizing historical datasets
+- Predictive modeling via ensemble and linear methodologies
+- Time-series statistical forecasting
+- Macroeconomic trend extrapolation
+- Forward-looking inflation estimation
+
+Supported Methodologies:
+
+- Linear Regression
 - Random Forest Regressor
 - XGBoost Regressor
-
-### Interactive Dashboard
-- Real-time indicator cards (CPI, WPI, Interest Rate, USD/INR, Brent Crude)
-- 24-month inflation history chart
-- Peak/trough analysis with trend direction
-- Model performance comparison with honest R² reporting
-- Predicted vs Actual holdout chart
+- ARIMA (AutoRegressive Integrated Moving Average)
 
 ---
 
-## Technical Architecture
+## Data Visualization
 
-### Backend
-- Python 3.12+
-- Flask 3.0 (Web application)
-
-### Data Processing
-- Pandas (data manipulation and resampling)
-- NumPy (numerical computation)
-
-### Machine Learning
-- Scikit-learn (RidgeCV, RandomForest, preprocessing, cross-validation)
-- XGBoost (gradient boosting)
-
-### Frontend
-- TailwindCSS (utility-first CSS via CDN)
-- Chart.js (interactive charts)
-- Google Material Symbols (icons)
-- Inter font (typography)
-
----
-
-## Dataset
-
-The merged dataset (`data/inflation_dataset.csv`) contains 7,023 daily rows across 10 columns:
-
-| Indicator | Column Name | Frequency | Source |
-|-----------|-------------|-----------|--------|
-| Consumer Price Index | `INDCPIALLMINMEI` | Monthly | FRED |
-| Wholesale Price Index | `WPIATT01INM661N` | Monthly | FRED |
-| Interest Rate | `INTDSRINM193N` | Monthly | FRED |
-| USD/INR Exchange Rate | `DEXINUS` | Daily | FRED |
-| Brent Crude Oil | `Average of DCOILBRENTEU` | Daily | FRED |
-| India Basket Crude | `datafilenew(india basket crude oil)` | Daily | PPAC |
-| GDP Proxy | `MKTGDPINA646NWDB` | Annual | FRED |
-| Unemployment Rate | `Unemployment Rate Annually` | Annual | World Bank |
-| Stock Market Proxy | `INDLORSGPNOSTSAM` | Daily | FRED |
-
-**Target variable:** YoY CPI inflation (%), computed as `((CPI_t - CPI_{t-12}) / CPI_{t-12}) × 100` on monthly resampled data.
-
-**Training window:** January 2005 – December 2022 (216 monthly observations)
-
----
-
-## Project Structure
-
-```text
-VaticMacro/
-│
-├── data/
-│   ├── [Raw CSV datasets from FRED/RBI/World Bank]
-│   └── inflation_dataset.csv       # Merged dataset (7,023 rows × 10 cols)
-│
-├── models/
-│   ├── best_model.pkl              # Trained RidgeCV pipeline + metadata
-│   └── metrics.json                # R², MAE, RMSE per model per fold
-│
-├── src/
-│   ├── __init__.py                 # Package marker
-│   ├── config.py                   # Column mappings and file paths
-│   ├── preprocessing.py            # Data loading, cleaning, date handling
-│   ├── feature_engineering.py      # Percentage-change, lag, ratio features
-│   └── train_model.py              # Monthly resampling, CV, model selection
-│
-├── app/
-│   └── templates/
-│       ├── base.html               # Shared layout (sidebar, head, scripts)
-│       ├── dashboard.html          # Inflation overview + indicator cards
-│       ├── analysis_page.html      # Correlation matrix + distributions
-│       ├── models_page.html        # R² comparison + feature importances
-│       ├── predict_page.html       # Scenario builder form
-│       ├── forecast_page.html      # 12-month inflation bar chart
-│       ├── home.html               # Landing page
-│       └── about.html              # Project information
-│
-├── docs/
-│   ├── GETTING_STARTED.md          # Installation and setup guide
-│   ├── ARCHITECTURE.md             # System design and data flow
-│   └── DATA_DICTIONARY.md          # Column reference and feature docs
-│
-├── notebooks/
-│   └── EDA.ipynb                   # Exploratory data analysis
-│
-├── app.py                          # Flask application (7 routes)
-├── main.py                         # Model training entry point
-├── merge_data.py                   # Merges raw CSVs into inflation_dataset.csv
-├── run.py                          # Flask launcher with banner
-├── requirements.txt                # Pinned dependencies
-└── README.md
-```
-
----
-
-## Quick Start
-
-### 1. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Train the model (optional — pre-trained model included)
-```bash
-python main.py
-```
-
-### 3. Start the dashboard
-```bash
-python run.py
-```
-Then open **http://localhost:5000** in your browser.
-
----
-
-## Application Pages
-
-| Page | Route | Description |
-|------|-------|-------------|
-| Dashboard | `/dashboard` | Current inflation rate, indicator cards, 24-month chart |
-| Analysis | `/analysis` | Correlation heatmap, time-series plots, distributions |
-| Models | `/models` | R² comparison table, feature importances, predicted vs actual |
-| Predict | `/predict` | Scenario builder — adjust indicators and get inflation prediction |
-| Forecast | `/forecast` | 12-month historical inflation bar chart with indicators |
-| About | `/about` | Project description and methodology |
-
----
-
-## Key Design Decisions
-
-1. **Monthly resampling before training** — CPI is released monthly, but exchange rates are daily. Training on daily data creates 96% redundant rows where CPI doesn't change, destroying cross-validation integrity.
-
-2. **Autoregressive features** — Inflation has autocorrelation > 0.99 at lag-1. Including `inflation_lag1`, `lag3`, `lag6` provides the strongest predictive signal.
-
-3. **RidgeCV over XGBoost** — With only 216 monthly training observations, regularized linear models generalize better than tree ensembles which overfit.
-
-4. **Percentage-change features** — Raw indicator values (e.g., GDP in trillions) have different scales across decades. Percentage changes are scale-independent and generalize across time periods.
-
-5. **Honest metrics display** — The dashboard shows real R² values (including negative ones if they occur) rather than hiding poor performance.
+- Programmatic rendering of inflation trend trajectories
+- Forecast divergence and comparison graphing
+- Empirical correlation heatmaps
+- Macroscopic economic indicator dashboards
+- Diagnostic visual insight generation
 
 ---
 
 ## Performance Evaluation
 
-Model performance is validated using:
+Algorithmic performance is rigorously validated utilizing:
 
-- **R² Score** (Coefficient of Determination) — proportion of variance explained
-- **MAE** (Mean Absolute Error) — average prediction error in percentage points
-- **RMSE** (Root Mean Squared Error) — penalizes large prediction errors
+- Mean Absolute Error (MAE)
+- Root Mean Squared Error (RMSE)
+- Mean Squared Error (MSE)
+- Coefficient of Determination (R² Score)
 
-All metrics computed via 5-fold TimeSeriesSplit to prevent data leakage.
-
----
-
-## Future Development
-
-- **Live data integration** via FRED/RBI API pipelines for automatic dataset updates
-- **Seasonal features** (month-of-year dummies) for capturing India's seasonal inflation patterns
-- **Additional indicators** (M3 money supply, food price index, trade balance)
-- **Region-specific inflation** for state-level granularity
+This methodology ensures maximum fidelity and statistical reliability in all generated forecasts.
 
 ---
 
-## Research Contributors
+# Technical Architecture
+
+## Backend and Development Environment
+
+- Python 3.10+
+- Jupyter Notebook Framework
+
+## Data Processing Libraries
+
+- Pandas
+- NumPy
+
+## Data Visualization Modules
+
+- Matplotlib
+- Seaborn
+
+## Machine Learning and Forecasting Implementations
+
+- Scikit-learn
+- XGBoost
+- Statsmodels
+- ARIMA
+
+## Analytical Methodologies
+
+- Advanced Statistical Analysis
+- Quantitative Feature Engineering
+- Iterative Time-Series Analysis
+
+---
+
+# Dataset Characteristics
+
+The programmatic architecture currently ingests a core set of primary macroeconomic indicators to establish the baseline predictive matrix:
+
+### Primary Core Indicators
+- Indian Consumer Price Index (CPI) [Monthly]
+- Indian Wholesale Price Index (WPI) [Monthly]
+- Indian Gross Domestic Product (GDP) Trajectories [Annual / Proxies]
+- Reserve Bank of India (RBI) Benchmark Interest Rates [Monthly]
+- Foreign Exchange Variations (USD/INR) [Daily]
+- Global Energy Benchmarks (Brent Crude Oil) [Daily]
+
+### Derived Target Variable
+- **Inflation Rate:** Dynamically calculated via Year-over-Year (YoY) percentage change derivations against the baseline Indian CPI index data.
+
+### Phase II Extensibility (Planned Expansion)
+Future iterations of the model will ingest extended external datasets localized for robust anomaly detection within the Indian economic framework:
+- Aggregate National Unemployment Rates
+- Indian Basket Crude Oil Valuations
+- Domestic Monetary Supply Aggregates (M1/M3)
+
+These metrics function as foundational input features for the systemic predictive modeling and temporal forecasting pipeline.
+
+---
+
+# Project Workflow
+
+## 1. Data Aggregation
+Systematic collection of historical macroeconomic and inflation-related datasets from authoritative public and institutional financial sources.
+
+## 2. Data Preprocessing Pipeline
+- **Time-Series Frequency Alignment:** Algorithmic downsampling of Daily data (Exchange Rates) and interpolation of Annual data (GDP) to synthesize a unified Monthly frequency matrix.
+- Mitigation and imputation of null values.
+- Comprehensive data sanitization.
+- Algorithmic outlier detection and handling.
+- Statistical data normalization.
+- Predictive feature selection strategies.
+
+## 3. Exploratory Data Analysis (EDA)
+
+- Empirical trend identification and smoothing
+- Statistical distribution variance analysis
+- Bivariate and multivariate correlation mapping
+- Discovery of latent macroeconomic patterns
+
+## 4. Feature Engineering
+
+- Synthesis of derived analytical variables
+- Optimization of critical economic indicators
+- Algorithmic dataset dimensionality reduction
+
+## 5. Model Architecture and Training
+
+Training of diverse forecasting algorithms, including:
+
+- Linear Regression
+- Random Forest Ensembles
+- XGBoost Architectures
+- ARIMA Time-Series Models
+
+## 6. Model Evaluation and Validation
+
+Rigorous evaluation of predictive fidelity utilizing:
+
+- Mean Absolute Error (MAE)
+- Root Mean Squared Error (RMSE)
+- Mean Squared Error (MSE)
+- Coefficient of Determination (R² Score)
+
+## 7. Predictive Generation
+
+Generate future inflation forecasts and economic trend predictions.
+
+---
+
+# Project Structure
+
+```text
+VaticMacro/
+│
+├── data/
+│   ├── [Raw CSV datasets...]
+│   └── inflation_dataset.csv (Merged output)
+│
+├── models/
+│   ├── best_model.pkl (Dynamically saved)
+│   └── metrics.json
+│
+├── src/
+│   ├── preprocessing.py (Cleans & standardizes data formats)
+│   ├── feature_engineering.py (Generates lags & rolling averages)
+│   └── train_model.py (Trains multiple models and selects best)
+│
+├── app/
+│   └── templates/
+│       ├── dashboard.html
+│       ├── analysis.html
+│       ├── models.html
+│       ├── predict.html
+│       └── [Forecast/About pages...]
+│
+├── .venv/ (Local Python Environment)
+├── requirements.txt
+├── merge_data.py (Master script to build dataset)
+├── app.py (Upcoming Flask Web Application)
+├── main.py (Background training trigger)
+└── README.md
+```
+
+---
+
+# Expected Operational Outcomes
+
+The execution of the framework yields:
+
+- Quantifiable future inflation projections
+- Formulated economic trend predictions
+- Empirical indicator importance metrics
+- Robust forecast accuracy analytics
+- Synthesized, graphical economic intelligence
+
+---
+
+# Applied Use Cases
+
+VaticMacro is architected to facilitate:
+
+### Government and Policy Planning
+Supports macroeconomic stabilization strategies and empirical policy formulation.
+
+### Financial Institutions
+Assists banking and regulatory organizations in extensive systemic risk assessment and operational forecasting.
+
+### Investment Analysis
+Offers institutional investors quantifiable data regarding future macroeconomic climates.
+
+### Strategic Corporate Planning
+Supports rigorous budgeting, pricing models, and structural strategic allocations.
+
+### Academic Research
+Serves as an empirical foundation for advanced economic and temporal forecasting research initiatives.
+
+---
+
+# Future Development Horizons
+
+- **Continuous Integration:** Integration of live, real-time macroeconomic datasets via API pipelines.
+- **Hybrid Architectures:** Implementation of dual-model ensembles, matching statistical baseline algorithms like ARIMA with advanced non-linear deep learning (e.g., ARIMA-LSTM).
+- **Time-Series Transformers:** Application of state-of-the-art Temporal Fusion Transformers (TFT) equipped with attention mechanics for superior multi-horizon extrapolation.
+- **Alternative Behavioral Data:** Integration of Natural Language Processing (NLP) models to ingest and execute sentiment analysis on Central Bank minutes and macroeconomic news indicators.
+- **Interactive Dashboards:** Implementation of dynamic, interactive forecasting suites.
+- **Granularity:** Region-specific and localized inflation metrics.
+- **Scale:** Expansion into cross-border, multi-national macroeconomic modeling.
+
+---
+
+# Research Contributors
 
 - Dhanush Pillay & Shubhangini Dixit
 
 ---
 
-## License
+# Licensing
 
-This repository is published for academic, research, and non-commercial educational purposes.
+This repository and framework are published explicitly for academic, research, and non-commercial educational purposes.
+
+---
+
+## Running locally (Windows)
+
+If you see "No module named 'flask'", use the included startup scripts to create a virtual environment and install dependencies.
+
+- PowerShell (recommended):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+
+- CMD:
+
+```cmd
+start.bat
+```
+
+Or install dependencies manually then run the app:
+
+```powershell
+python -m pip install -r requirements.txt
+python app.py
+```
+
+Static-only fallback (no Python required): open `app/templates` in a simple file server:
+
+```powershell
+cd app/templates
+python -m http.server 8000
+# then open http://127.0.0.1:8000/dashboard.html
+```
