@@ -31,8 +31,15 @@ def merge_all():
                 merged_df,
                 df,
                 on="Date",
-                how="outer"
+                how="outer",
+                suffixes=('', f'_dup_{file}')
             )
+
+    # Drop any duplicate columns created by overlapping merges
+    dup_cols = [c for c in merged_df.columns if '_dup_' in str(c)]
+    if dup_cols:
+        print(f"Warning: Dropping {len(dup_cols)} duplicate columns: {dup_cols}")
+        merged_df = merged_df.drop(columns=dup_cols)
 
     # Sort by date and forward fill missing values
     merged_df = merged_df.sort_values("Date").reset_index(drop=True)
