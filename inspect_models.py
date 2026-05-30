@@ -1,4 +1,5 @@
-import os, joblib
+import os
+import joblib
 
 for f in sorted(os.listdir('models')):
     if f.endswith('.pkl'):
