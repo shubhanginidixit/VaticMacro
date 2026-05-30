@@ -105,6 +105,12 @@
 </div>
 </div>
 </main>
+{% if debug_info %}
+<div class="fixed bottom-4 right-4 bg-[#0b1220] border border-[#2a2d3a] p-3 rounded text-xs text-[#8c909f] w-96 max-h-60 overflow-auto">
+<div class="font-semibold mb-2">Prediction Debug</div>
+<pre style="white-space:pre-wrap; font-size:12px;">{{ debug_info }}</pre>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

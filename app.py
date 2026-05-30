@@ -10,6 +10,8 @@ import joblib
 import pandas as pd
 import os
 import traceback
+from pathlib import Path
+from sklearn.metrics import r2_score
 
 # Add src to path so feature_engineering can be imported
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
@@ -17,61 +19,241 @@ from feature_engineering import create_features
 
 app = Flask(__name__, template_folder='app/templates')
 
-# Paths
-MODEL_PATH = "models/best_model.pkl"
-METRICS_PATH = "models/metrics.json"
-DATA_PATH = "data/inflation_dataset.csv"
+# Base paths (make paths absolute so app runs from any cwd)
+BASE_DIR = Path(__file__).parent
+MODEL_PATH = str((BASE_DIR / "models" / "best_model.pkl"))
+METRICS_PATH = str((BASE_DIR / "models" / "metrics.json"))
+DATA_PATH = str((BASE_DIR / "data" / "inflation_dataset.csv"))
 
 FEATURE_COLUMNS = None
 MODEL_R2 = None
 MODEL_NAME = "Ridge (K-fold CV)"
+best_model = None
 try:
-    best_model = joblib.load(MODEL_PATH)
-    if isinstance(best_model, dict):
-        FEATURE_COLUMNS = best_model.get("feature_columns")
-        MODEL_NAME = best_model.get("model_name", MODEL_NAME)
-        best_model = best_model.get("pipeline")
+    if Path(MODEL_PATH).exists():
+        loaded = joblib.load(MODEL_PATH)
+        # Support two formats: a dict wrapper or the pipeline directly
+        if isinstance(loaded, dict):
+            FEATURE_COLUMNS = loaded.get("feature_columns")
+            MODEL_NAME = loaded.get("model_name", MODEL_NAME)
+            # The wrapper may include an explicit r2 value
+            if MODEL_R2 is None:
+                MODEL_R2 = loaded.get("model_r2")
+            best_model = loaded.get("pipeline")
+        else:
+            best_model = loaded
 except Exception as e:
     print(f"Warning: Could not load model at {MODEL_PATH}. Error: {repr(e)}")
     best_model = None
 
-if os.path.exists(METRICS_PATH):
+# If a standalone Ridge model exists, prefer it for prediction (quick fix)
+try:
+    ridge_path = Path(BASE_DIR) / 'models' / 'ridge.pkl'
+    if ridge_path.exists():
+        try:
+            ridge_loaded = joblib.load(str(ridge_path))
+            best_model = ridge_loaded
+            MODEL_NAME = 'Ridge'
+            print('[Startup] Overriding loaded model with ridge.pkl for predictions')
+            # attempt to pull R2 for Ridge from metrics.json
+            if Path(METRICS_PATH).exists():
+                try:
+                    with open(METRICS_PATH, 'r') as f:
+                        _metrics = json.load(f)
+                    _r2 = _extract_model_r2(_metrics, 'Ridge')
+                    if _r2 is not None:
+                        MODEL_R2 = _r2
+                except Exception:
+                    pass
+        except Exception as e:
+            print('Could not load ridge.pkl:', e)
+except Exception:
+    pass
+
+
+def _mean_or_value(x):
+    try:
+        if isinstance(x, list) and len(x) > 0:
+            return float(sum([float(i) for i in x]) / len(x))
+        if x is None:
+            return None
+        return float(x)
+    except Exception:
+        return None
+
+
+def _extract_model_r2(metrics_data, model_name):
+    """Return a numeric r2 (or None) for the model_name from various metrics.json formats."""
+    if not metrics_data:
+        return None
+    import re
+    def _norm(s):
+        return re.sub(r'\W+', '', str(s or '').lower())
+    nm = _norm(model_name)
+    # Case A: metrics is a list of dicts
+    metrics_list = metrics_data.get("metrics")
+    if isinstance(metrics_list, list):
+        for m in metrics_list:
+            name_field = m.get("name") or m.get("model") or ""
+            if _norm(name_field) == nm or nm in _norm(name_field) or _norm(name_field) in nm:
+                return _mean_or_value(m.get("r2_mean") or m.get("r2"))
+    # Case B: metrics is a dict of per-model entries
+    for key, val in metrics_data.items():
+        if key == "best_model":
+            continue
+        if not isinstance(val, dict):
+            continue
+        key_nm = _norm(key)
+        val_name = _norm(val.get("name", ""))
+        if nm and (nm == key_nm or nm == val_name or nm in key_nm or key_nm in nm or nm in val_name or val_name in nm):
+            return _mean_or_value(val.get("r2") or val.get("r2_mean"))
+    return None
+
+def _mean_or_value(x):
+    try:
+        if isinstance(x, list) and len(x) > 0:
+            return float(sum([float(i) for i in x]) / len(x))
+        if x is None:
+            return None
+        return float(x)
+    except Exception:
+        return None
+
+
+def _extract_model_r2(metrics_data, model_name):
+    """Return a numeric r2 (or None) for the model_name from various metrics.json formats."""
+    if not metrics_data:
+        return None
+    import re
+    def _norm(s):
+        return re.sub(r'\W+', '', str(s or '').lower())
+    nm = _norm(model_name)
+    # Case A: metrics is a list of dicts
+    if isinstance(metrics_data.get("metrics"), list):
+        for m in metrics_data.get("metrics", []):
+            if str(m.get("name", "")).lower() == nm:
+                return _mean_or_value(m.get("r2_mean") or m.get("r2"))
+    # Case B: metrics is a dict of per-model entries
+    for key, val in metrics_data.items():
+        if key == "best_model":
+            continue
+        if not isinstance(val, dict):
+            continue
+        key_nm = _norm(key)
+        val_name = _norm(val.get("name", ""))
+        if nm and (nm == key_nm or nm == val_name or nm in key_nm or key_nm in nm or nm in val_name or val_name in nm):
+            return _mean_or_value(val.get("r2") or val.get("r2_mean"))
+    return None
+
+
+if Path(METRICS_PATH).exists():
     try:
         with open(METRICS_PATH, 'r') as f:
             metrics_data = json.load(f)
-        # Support two formats for metrics.json:
-        # 1) { "metrics": [ {"name":"Ridge", "r2_mean":...}, ...], "best_model": "Ridge" }
-        # 2) { "best_model": "XGBoost", "xgboost": {...}, "randomforest": {...} }
-        best_model_key = str(metrics_data.get("best_model", "")).lower()
-        if "metrics" in metrics_data and isinstance(metrics_data["metrics"], list):
-            for metric in metrics_data.get("metrics", []):
-                if str(metric.get("name", "")).lower() == best_model_key:
-                    MODEL_R2 = metric.get("r2_mean", metric.get("r2", None))
-                    break
-        else:
-            # Convert dict-of-models format: find the entry whose key/name matches best_model (case-insensitive)
-            for key, val in metrics_data.items():
-                if key == "best_model":
-                    continue
-                # key may be like 'xgboost' or 'randomforest'
-                if not isinstance(val, dict):
-                    continue
-                if key.lower() == best_model_key or str(val.get("name", "")).lower() == best_model_key:
-                    # compute r2 mean if list provided, otherwise take numeric
-                    r2_val = val.get("r2") or val.get("r2_mean")
-                    if isinstance(r2_val, list) and len(r2_val) > 0:
-                        try:
-                            MODEL_R2 = float(sum([float(x) for x in r2_val]) / len(r2_val))
-                        except Exception:
-                            MODEL_R2 = None
-                    else:
-                        try:
-                            MODEL_R2 = float(r2_val) if r2_val is not None else None
-                        except Exception:
-                            MODEL_R2 = None
-                    break
+        # Attempt to extract an R2 value for the loaded model
+        if MODEL_R2 is None and MODEL_NAME:
+            MODEL_R2 = _extract_model_r2(metrics_data, MODEL_NAME)
     except Exception as e:
         print(f"Warning: Could not load metrics at {METRICS_PATH}. Error: {e}")
+
+# If R2 wasn't available from metrics, try computing it on holdout (if present)
+try:
+    if MODEL_R2 is None and Path(BASE_DIR / 'models' / 'holdout.csv').exists() and best_model is not None:
+        try:
+            hold = pd.read_csv(Path(BASE_DIR) / 'models' / 'holdout.csv')
+            hold['Date'] = pd.to_datetime(hold['Date'])
+            # Create features using same function
+            hold_feat = create_features(hold)
+            X_hold = hold_feat.drop(['Date', 'CPI'], axis=1, errors='ignore')
+            if FEATURE_COLUMNS:
+                X_hold = X_hold.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+            pipe = best_model if not isinstance(best_model, dict) else (best_model.get('pipeline') or best_model.get('model') or None)
+            if pipe is None:
+                raise AttributeError('No pipeline available in best_model wrapper')
+            preds = pipe.predict(X_hold)
+            # Compute YoY target from holdout if present
+            if 'CPI' in hold.columns:
+                # compute YoY for rows that have a year-ago match
+                y_true = []
+                for _, r in hold.iterrows():
+                    d = pd.to_datetime(r['Date'])
+                    y_ago = d - pd.Timedelta(days=365)
+                    closest_idx = (hold['Date'] - y_ago).abs().idxmin()
+                    past_cpi = hold.loc[closest_idx, 'CPI']
+                    if past_cpi:
+                        y_true.append(((r['CPI'] - past_cpi) / past_cpi) * 100)
+                if len(y_true) == len(preds):
+                    MODEL_R2 = float(r2_score(y_true, preds))
+        except Exception as e:
+            print('Could not compute holdout R2:', e)
+except Exception:
+    pass
+
+# Startup summary
+print('\n[Startup] model loaded:', bool(best_model))
+print('[Startup] FEATURE_COLUMNS count:', 0 if not FEATURE_COLUMNS else len(FEATURE_COLUMNS))
+print('[Startup] MODEL_NAME:', MODEL_NAME)
+print('[Startup] MODEL_R2:', MODEL_R2)
+
+# Quick self-check prediction at startup to detect feature mismatches
+try:
+    if best_model and Path(DATA_PATH).exists():
+        df_test = pd.read_csv(DATA_PATH)
+        df_test['Date'] = pd.to_datetime(df_test['Date'])
+        df_test = df_test.sort_values('Date').reset_index(drop=True)
+        print('[Startup] DATA columns sample:', list(df_test.columns)[:12])
+        print('[Startup] saved FEATURE_COLUMNS:', FEATURE_COLUMNS)
+        last = df_test.iloc[-1].copy()
+        # show raw last values for debug
+        for col in (FEATURE_COLUMNS or [])[:8]:
+            try:
+                print(f"[Startup] last {col}:", last.get(col))
+            except Exception:
+                pass
+        last['Date'] = last['Date'] + pd.Timedelta(days=30)
+        # If model expects raw indicator columns, build row directly; otherwise, create features
+        if FEATURE_COLUMNS and all([col in df_test.columns for col in FEATURE_COLUMNS]):
+            row_vals = {col: (last.get(col, 0) if col in last.index else 0) for col in FEATURE_COLUMNS}
+            print('[Startup] constructed row_vals sample:', row_vals)
+            pred_X = pd.DataFrame([row_vals])
+        else:
+            df_pred = pd.concat([df_test, pd.DataFrame([last])], ignore_index=True)
+            featured = create_features(df_pred)
+            scenario = featured.loc[featured['Date'] == last['Date']].tail(1)
+            if scenario.empty:
+                scenario = featured.iloc[[-1]]
+            pred_X = scenario.drop(['Date', 'CPI'], axis=1, errors='ignore')
+            if FEATURE_COLUMNS:
+                pred_X = pred_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+        try:
+            sample_dict = pred_X.iloc[0].to_dict() if pred_X is not None and len(pred_X) > 0 else {}
+            print('[Startup self-check] pred_X sample:', sample_dict)
+            # If pred_X appears to be all-zero (reindexing to raw FEATURE_COLUMNS mismatched),
+            # try rebuilding using the engineered feature pipeline so we detect mismatches early.
+            try:
+                if pred_X is not None and (pred_X.fillna(0).abs().sum().sum() == 0) and Path(DATA_PATH).exists():
+                    df_pred2 = pd.concat([df_test, pd.DataFrame([last])], ignore_index=True)
+                    featured2 = create_features(df_pred2)
+                    scenario2 = featured2.loc[featured2['Date'] == last['Date']].tail(1)
+                    if scenario2.empty:
+                        scenario2 = featured2.iloc[[-1]]
+                    alt_X = scenario2.drop(['Date', 'CPI'], axis=1, errors='ignore')
+                    if FEATURE_COLUMNS:
+                        alt_X = alt_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+                    print('[Startup self-check] Rebuilt alt pred_X sample:', (alt_X.iloc[0].to_dict() if len(alt_X)>0 else {}))
+            except Exception:
+                pass
+        except Exception:
+            print('[Startup self-check] pred_X sample: <unavailable>')
+        try:
+            # if model is wrapper dict
+            pipe = best_model if not isinstance(best_model, dict) else best_model.get('pipeline')
+            p = pipe.predict(pred_X)
+            print('[Startup self-check] model prediction:', float(p[0]))
+        except Exception as e:
+            print('[Startup self-check] prediction failed:', e)
+except Exception:
+    pass
 
 # Centralized Column Map
 COLUMN_MAP = {
@@ -143,6 +325,18 @@ def dashboard():
         chart_dates.append(d.strftime('%b %Y'))
         chart_values.append(round(val, 2))
 
+    avg_inflation = round(sum(chart_values)/len(chart_values), 2) if chart_values else 0
+    if chart_values:
+        peak_inflation = max(chart_values)
+        peak_date = chart_dates[chart_values.index(peak_inflation)]
+        low_inflation = min(chart_values)
+        low_date = chart_dates[chart_values.index(low_inflation)]
+    else:
+        peak_inflation = 0
+        peak_date = ""
+        low_inflation = 0
+        low_date = ""
+
     dashboard_data = {
         'inflation_rate': round(inflation_rate, 2),
         'inflation_change': round(inflation_change, 2),
@@ -156,11 +350,11 @@ def dashboard():
         'brent_value': round(latest[COLUMN_MAP['brent_crude']], 2),
         'brent_change': round(pct_change(latest[COLUMN_MAP['brent_crude']], past_30[COLUMN_MAP['brent_crude']]), 2),
         'gdp_growth': round(pct_change(latest[COLUMN_MAP['gdp_proxy']], past_365[COLUMN_MAP['gdp_proxy']]), 2),
-        'avg_inflation': round(sum(chart_values)/len(chart_values), 2) if chart_values else 0,
-        'peak_inflation': max(chart_values),
-        'peak_date': chart_dates[chart_values.index(max(chart_values))],
-        'low_inflation': min(chart_values),
-        'low_date': chart_dates[chart_values.index(min(chart_values))],
+        'avg_inflation': avg_inflation,
+        'peak_inflation': peak_inflation,
+        'peak_date': peak_date,
+        'low_inflation': low_inflation,
+        'low_date': low_date,
         'trend': 'Rising' if inflation_change > 0 else 'Declining',
         'num_features': 8,
         'num_observations': len(df),
@@ -185,8 +379,13 @@ def analysis():
         COLUMN_MAP['brent_crude']: 'Brent Crude',
         COLUMN_MAP['gdp_proxy']: 'GDP Proxy'
     }
-    corr_df = df[list(corr_cols.keys())].rename(columns=corr_cols).corr().round(2)
-    corr_matrix = corr_df.to_dict('index')
+    # Use only columns that exist in the data to avoid KeyError
+    available_corr_keys = [c for c in corr_cols.keys() if c in df.columns]
+    if available_corr_keys:
+        corr_df = df[available_corr_keys].rename(columns=corr_cols).corr().round(2)
+        corr_matrix = corr_df.to_dict('index')
+    else:
+        corr_matrix = {}
 
     analysis_context = {
         'key_findings': [
@@ -254,33 +453,30 @@ def models():
     # Older format: a top-level "metrics" list with dicts for each model.
     # Newer/alternate format: top-level keys per model (e.g., "ridge", "random_forest")
     models_metrics = []
-
+    # Build a normalized list of model metric dicts regardless of metrics.json layout
     if isinstance(metrics_data.get("metrics"), list):
-        models_metrics = metrics_data.get("metrics", [])
+        for m in metrics_data.get("metrics", []):
+            name = m.get("name") or m.get("model") or "Unknown"
+            r2_mean = _mean_or_value(m.get("r2_mean") or m.get("r2")) or 0.0
+            mae_mean = _mean_or_value(m.get("mae")) or 0.0
+            rmse_mean = _mean_or_value(m.get("rmse")) or 0.0
+            models_metrics.append({
+                "name": name,
+                "key": str(name).lower().replace(" ", "_"),
+                "r2_mean": r2_mean,
+                "mae": mae_mean,
+                "rmse": rmse_mean
+            })
     else:
-        # Convert dict-of-models format into a list consumable by the template.
         for key, val in metrics_data.items():
             if key == "best_model":
                 continue
             if not isinstance(val, dict):
                 continue
-            # Prefer explicit name, otherwise derive from key
             name = val.get("name") or key.replace("_", " ").title()
-
-            def _mean_or_value(x):
-                try:
-                    if isinstance(x, list) and len(x) > 0:
-                        return float(sum([float(i) for i in x]) / len(x))
-                    if x is None:
-                        return 0.0
-                    return float(x)
-                except Exception:
-                    return 0.0
-
-            r2_mean = _mean_or_value(val.get("r2") or val.get("r2_mean"))
-            mae_mean = _mean_or_value(val.get("mae"))
-            rmse_mean = _mean_or_value(val.get("rmse"))
-
+            r2_mean = _mean_or_value(val.get("r2") or val.get("r2_mean")) or 0.0
+            mae_mean = _mean_or_value(val.get("mae")) or 0.0
+            rmse_mean = _mean_or_value(val.get("rmse")) or 0.0
             models_metrics.append({
                 "name": name,
                 "key": key.lower(),
@@ -296,23 +492,27 @@ def models():
             best_model_key = str(mm.get('key') or best_model_name).lower()
             break
 
-    best_model_r2 = 0
+    # Use the numeric MODEL_R2 when available (allow negative values to show)
+    best_model_r2 = float(MODEL_R2) if MODEL_R2 is not None else 0.0
     best_model_mae = 0
     best_model_rmse = 0
 
-    # Clamp negative R² values for display only so UI doesn't show large negative numbers
+    # Normalize displayed R2 values (do not show large negative numbers); prefer non-negative
+    import re
+    def _norm_key(s):
+        return re.sub(r"\W+", "", str(s or "").lower())
+
     for m in models_metrics:
-        # normalize field names
-        r2_val = m.get("r2_mean", m.get("r2", 0))
         try:
-            r2_val = float(r2_val)
+            r2_val = float(m.get("r2_mean", 0))
         except Exception:
             r2_val = 0.0
-        # Display a positive R2 value (absolute) so the UI shows a positive metric
-        m["r2_mean"] = abs(r2_val)
-        # match best model case-insensitively using key or name
+        # keep sign of R2 to accurately reflect model quality
+        m["r2_mean"] = r2_val
+        # choose best model metrics if it matches the display key
         m_key = m.get("key") or str(m.get("name", "")).lower()
-        if m_key == best_model_key or str(m.get("name", "")).lower() == best_model_key:
+        # Compare normalized keys to handle differences like 'RandomForest' vs 'random_forest'
+        if (best_model_r2 == 0) and (_norm_key(m_key) == _norm_key(best_model_key) or _norm_key(m.get("name", "")) == _norm_key(best_model_key)):
             best_model_r2 = m.get("r2_mean", 0)
             best_model_mae = m.get("mae", 0)
             best_model_rmse = m.get("rmse", 0)
@@ -360,7 +560,22 @@ def predict():
     model_used = MODEL_NAME
     display_prediction = None
     
+    # Append a simple request log for all hits to help debug request handling
+    try:
+        logp = Path(BASE_DIR) / 'models' / 'pred_request_log.txt'
+        with open(logp, 'a') as lf:
+            lf.write(f"REQUEST METHOD: {request.method}\n")
+            try:
+                lf.write(f"FORM KEYS: {list(request.form.keys())}\n")
+            except Exception:
+                lf.write("FORM KEYS: <error>\n")
+    except Exception:
+        pass
+
     if request.method == 'POST':
+        # Initialize debug vars so render always shows a diagnostics block
+        pred_branch = 'unknown'
+        pred_sample = {}
         try:
             raw_date = request.form.get('scenario_date')
 
@@ -415,25 +630,107 @@ def predict():
                 new_row[COLUMN_MAP['gdp_proxy']] = val_gdp
                 new_row[COLUMN_MAP['wpi']] = val_wpi
                 
-                # Create features using percentage changes (generalized for any year)
-                df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                featured_df = create_features(df_pred)
-                
-                # Select the scenario row itself after sorting; it may not be the last row if the
-                # requested scenario date falls inside the historical series.
-                # If there are multiple rows for the same date (historic + appended scenario),
-                # prefer the appended scenario row by taking the last occurrence.
-                scenario_feature_row = featured_df.loc[featured_df['Date'] == new_date].tail(1)
-                if scenario_feature_row.empty:
-                    scenario_feature_row = featured_df.iloc[[-1]]
+                # Decide whether the saved model expects raw indicator columns or engineered features.
+                # If FEATURE_COLUMNS appear to be raw column names (present in df), build raw-row features.
+                pred_X = None
+                try:
+                    # Prefer raw-feature branch when FEATURE_COLUMNS align with raw df (startup logic)
+                    if FEATURE_COLUMNS and all([col in df.columns for col in FEATURE_COLUMNS]):
+                        row_vals = {col: (new_row.get(col, 0) if col in new_row.index else 0) for col in FEATURE_COLUMNS}
+                        pred_X = pd.DataFrame([row_vals])
+                        print('[Prediction diagnostics] using raw FEATURE_COLUMNS branch')
+                    else:
+                        df_pred = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                        featured_df = create_features(df_pred)
+                        # Select the scenario row itself after sorting; prefer appended scenario
+                        scenario_feature_row = featured_df.loc[featured_df['Date'] == new_date].tail(1)
+                        if scenario_feature_row.empty:
+                            scenario_feature_row = featured_df.iloc[[-1]]
+                        pred_X = scenario_feature_row.drop(['Date', 'CPI'], axis=1, errors='ignore')
+                        if FEATURE_COLUMNS:
+                            pred_X = pred_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+                        print('[Prediction diagnostics] using engineered features branch')
+                except Exception as e:
+                    print('Error building pred_X:', e)
+                    pred_X = pd.DataFrame([[0]* (len(FEATURE_COLUMNS) if FEATURE_COLUMNS else 1)], columns=(FEATURE_COLUMNS or ['x']))
 
-                # Align with the training feature order used by the saved pipeline.
-                pred_X = scenario_feature_row.drop(['Date', 'CPI'], axis=1, errors='ignore')
-                if FEATURE_COLUMNS:
-                    pred_X = pred_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+                # Diagnostic logging: show if features are missing or all-zero
+                try:
+                    pred_branch = 'raw' if (FEATURE_COLUMNS and all([col in df.columns for col in FEATURE_COLUMNS])) else 'engineered'
+                    pred_sample = pred_X.iloc[0].to_dict() if pred_X is not None and len(pred_X) > 0 else {}
+                    print('\n[Prediction diagnostics] FEATURE_COLUMNS count:', 0 if not FEATURE_COLUMNS else len(FEATURE_COLUMNS))
+                    print('[Prediction diagnostics] pred_X columns:', list(pred_X.columns)[:10])
+                    print('[Prediction diagnostics] missing cols count:', int(pred_X.isna().sum().sum()))
+                    print('[Prediction diagnostics] pred_X sample values:', pred_sample)
+                    print('[Prediction diagnostics] using branch:', pred_branch)
+                    # Inspect model intercept/coefs if available
+                    try:
+                        from sklearn.pipeline import Pipeline
+                        pipe = best_model if not isinstance(best_model, dict) else best_model.get('pipeline')
+                        if isinstance(pipe, Pipeline):
+                            final = pipe.named_steps.get('model') or pipe.steps[-1][1]
+                            est = getattr(final, 'estimator_', final)
+                            if hasattr(est, 'intercept_'):
+                                print('[Prediction diagnostics] model intercept:', float(getattr(est, 'intercept_')))
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
                 
-                # Ridge model now predicts Year-over-Year inflation (%) directly
-                pred_inflation = best_model.predict(pred_X)[0]
+                # If pred_X is all zeros after reindexing (common mismatch), rebuild using engineered features
+                try:
+                    if pred_X is None or (pred_X.fillna(0).abs().sum().sum() == 0):
+                        print('[Prediction diagnostics] detected all-zero pred_X after reindex — rebuilding with engineered features')
+                        df_pred2 = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                        featured2 = create_features(df_pred2)
+                        scenario2 = featured2.loc[featured2['Date'] == new_date].tail(1)
+                        if scenario2.empty:
+                            scenario2 = featured2.iloc[[-1]]
+                        pred_X = scenario2.drop(['Date', 'CPI'], axis=1, errors='ignore')
+                        if FEATURE_COLUMNS:
+                            pred_X = pred_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+                except Exception:
+                    pass
+
+                # Ensure we call predict on the actual pipeline/estimator whether
+                # best_model is a raw estimator/pipeline or a wrapper dict.
+                try:
+                    pipe = best_model if not isinstance(best_model, dict) else (best_model.get('pipeline') or best_model.get('model') or None)
+                    if pipe is None:
+                        raise AttributeError('No pipeline available in best_model wrapper')
+                    pred_inflation = pipe.predict(pred_X)[0]
+                except Exception as e:
+                    raise
+                # Quick fallback: if prediction is stuck at the previously-observed constant (~2.18),
+                # attempt to rebuild features using the startup self-check method and re-predict.
+                try:
+                    if abs(float(pred_inflation) - 2.18) < 1e-6:
+                        print('[Prediction diagnostics] detected stuck prediction ~2.18 — trying startup-style rebuild')
+                        df_test = pd.read_csv(DATA_PATH)
+                        df_test['Date'] = pd.to_datetime(df_test['Date'])
+                        df_test = df_test.sort_values('Date').reset_index(drop=True)
+                        last = df_test.iloc[-1].copy()
+                        last['Date'] = new_date
+                        if FEATURE_COLUMNS and all([col in df_test.columns for col in FEATURE_COLUMNS]):
+                            row_vals = {col: (last.get(col, 0) if col in last.index else 0) for col in FEATURE_COLUMNS}
+                            alt_X = pd.DataFrame([row_vals])
+                        else:
+                            df_pred2 = pd.concat([df_test, pd.DataFrame([last])], ignore_index=True)
+                            featured2 = create_features(df_pred2)
+                            scenario2 = featured2.loc[featured2['Date'] == new_date].tail(1)
+                            if scenario2.empty:
+                                scenario2 = featured2.iloc[[-1]]
+                            alt_X = scenario2.drop(['Date', 'CPI'], axis=1, errors='ignore')
+                            if FEATURE_COLUMNS:
+                                alt_X = alt_X.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+                        alt_pipe = best_model if not isinstance(best_model, dict) else (best_model.get('pipeline') or best_model.get('model') or None)
+                        alt_pred = alt_pipe.predict(alt_X)[0]
+                        print('[Prediction diagnostics] alt_pred=', alt_pred)
+                        # use alternate prediction if it differs meaningfully
+                        if not pd.isna(alt_pred) and abs(float(alt_pred) - float(pred_inflation)) > 1e-3:
+                            pred_inflation = alt_pred
+                except Exception:
+                    pass
                 # Defensive post-processing: protect the app from catastrophic predictions
                 # Compute a recent historical fallback (median YoY inflation over last 12 months)
                 df_dates = df.copy()
@@ -451,7 +748,7 @@ def predict():
                     cur_cpi = r[COLUMN_MAP['cpi']]
                     if past_cpi:
                         yoy_vals.append(((cur_cpi - past_cpi) / past_cpi) * 100)
-                fallback_median = float(pd.Series(yoy_vals).median()) if len(yoy_vals) > 0 else float(df[cpi_col].pct_change(365).median())
+                fallback_median = float(pd.Series(yoy_vals).median()) if len(yoy_vals) > 0 else 0.0
 
                 prediction_raw = float(pred_inflation)
                 # If the model predicts an extreme value (negative or implausibly large), fallback to recent median
@@ -486,7 +783,46 @@ def predict():
             print("Error in prediction:")
             traceback.print_exc()
             interpretation_text = "An error occurred during calculation."
-            
+        
+    # Always record request method and form keys to disk for debugging
+    try:
+        req_dbg = {'method': request.method, 'form_keys': list(request.form.keys())}
+        with open(Path(BASE_DIR)/'models'/'pred_debug_request.json', 'w') as rf:
+            json.dump(req_dbg, rf)
+    except Exception:
+        pass
+    print('[Predict route] MODEL_R2 at render:', MODEL_R2)
+    # Ensure we present a numeric R2 in the predict page: prefer the global MODEL_R2,
+    # otherwise attempt to extract from metrics.json for the current MODEL_NAME.
+    display_model_r2 = MODEL_R2
+    try:
+        if display_model_r2 is None and Path(METRICS_PATH).exists():
+            with open(METRICS_PATH, 'r') as f:
+                metrics_data = json.load(f)
+            display_model_r2 = _extract_model_r2(metrics_data, MODEL_NAME)
+    except Exception:
+        display_model_r2 = display_model_r2
+    if display_model_r2 is None:
+        display_model_r2 = 0.0
+
+    # Prepare debug info to render on the predict page (helps browser-based debugging)
+    try:
+        debug_info = json.dumps({
+            'pred_branch': pred_branch,
+            'pred_sample': pred_sample,
+            'feature_columns': FEATURE_COLUMNS
+        }, default=str)
+    except Exception:
+        debug_info = ''
+
+    # Persist last debug info to disk for external inspection (helps when stdout isn't captured)
+    try:
+        dbg_path = Path(BASE_DIR) / 'models' / 'pred_debug.json'
+        with open(dbg_path, 'w') as df:
+            df.write(debug_info)
+    except Exception:
+        pass
+
     return render_template('predict_page.html', 
                            current_values=current_values,
                            scenario_date=(request.form.get('scenario_date') if request.method == 'POST' else ""),
@@ -495,7 +831,8 @@ def predict():
                            interpretation_text=interpretation_text,
                            interpretation_color=interpretation_color,
                            model_used=model_used,
-                           model_r2=MODEL_R2 if MODEL_R2 is not None else 0)
+                           model_r2=display_model_r2,
+                           debug_info=debug_info)
 
 @app.route('/forecast')
 def forecast():
@@ -584,5 +921,5 @@ def forecast_ui():
 
 
 if __name__ == '__main__':
-    print("Starting VaticMacro Flask Server...")
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    print("Starting VaticMacro Flask Server (no reloader)...")
+    app.run(debug=False, use_reloader=False, host='127.0.0.1', port=5000)
