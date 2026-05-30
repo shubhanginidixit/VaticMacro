@@ -1,5 +1,4 @@
 import joblib
-import pprint
 from pathlib import Path
 
 models = [Path('models') / 'best_model.pkl', Path('models') / 'ridge.pkl']

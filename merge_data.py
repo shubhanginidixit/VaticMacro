@@ -56,7 +56,7 @@ def merge_all():
     print(f"Total columns: {len(merged_df.columns)}")
     print(f"Date range: {merged_df['Date'].min()} to {merged_df['Date'].max()}")
     print(f"Missing values: {merged_df.isnull().sum().sum()}")
-    print(f"\nDataset saved to: data/inflation_dataset.csv")
+    print("\nDataset saved to: data/inflation_dataset.csv")
     print("=" * 80)
     print("\nReady for ML model training!")
 
