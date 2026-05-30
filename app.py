@@ -1,21 +1,21 @@
 import sys
 try:
-    from flask import Flask, render_template, request, redirect, url_for
+    from flask import Flask, render_template, request, redirect, url_for  # type: ignore[reportMissingImports]
 except ImportError:
     print("\nError: Missing Python dependency 'Flask'.\n\nPlease install required packages:\n\n    python -m pip install -r requirements.txt\n\nOr run the supplied Windows start script which creates a virtualenv and installs deps:\n\n    powershell -ExecutionPolicy Bypass -File start.ps1\n\nExiting.\n")
     sys.exit(1)
 
 import json
-import joblib
-import pandas as pd
+import joblib  # type: ignore[reportMissingImports]
+import pandas as pd  # type: ignore[reportMissingImports]
 import os
 import traceback
 from pathlib import Path
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score  # type: ignore[reportMissingImports]
 
 # Add src to path so feature_engineering can be imported
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-from feature_engineering import create_features
+from feature_engineering import create_features  # type: ignore[reportMissingImports]
 
 app = Flask(__name__, template_folder='app/templates')
 
@@ -86,28 +86,9 @@ except Exception as e:
     best_model = None
 
 # If a standalone Ridge model exists, prefer it for prediction (quick fix)
-try:
-    ridge_path = Path(BASE_DIR) / 'models' / 'ridge.pkl'
-    if ridge_path.exists():
-        try:
-            ridge_loaded = joblib.load(str(ridge_path))
-            best_model = ridge_loaded
-            MODEL_NAME = 'Ridge'
-            print('[Startup] Overriding loaded model with ridge.pkl for predictions')
-            # attempt to pull R2 for Ridge from metrics.json
-            if Path(METRICS_PATH).exists():
-                try:
-                    with open(METRICS_PATH, 'r') as f:
-                        _metrics = json.load(f)
-                    _r2 = _extract_model_r2(_metrics, 'Ridge')
-                    if _r2 is not None:
-                        MODEL_R2 = _r2
-                except Exception:
-                    pass
-        except Exception as e:
-            print('Could not load ridge.pkl:', e)
-except Exception:
-    pass
+# Note: do not auto-override the selected model with `ridge.pkl` here.
+# The app should prefer the `best_model.pkl` artifact (or explicit selection) to
+# avoid showing metrics from a different model than the saved best model.
 
 
 def _mean_or_value(x):
@@ -405,7 +386,7 @@ def analysis():
         'feature_names': list(corr_cols.values())
     }
     
-    import numpy as np
+    import numpy as np  # type: ignore[reportMissingImports]
     analysis_data_dict = {}
     df = df.copy()
     df['Date'] = pd.to_datetime(df['Date'])
@@ -664,7 +645,7 @@ def predict():
                     print('[Prediction diagnostics] using branch:', pred_branch)
                     # Inspect model intercept/coefs if available
                     try:
-                        from sklearn.pipeline import Pipeline
+                        from sklearn.pipeline import Pipeline  # type: ignore[reportMissingImports]
                         pipe = best_model if not isinstance(best_model, dict) else best_model.get('pipeline')
                         if isinstance(pipe, Pipeline):
                             final = pipe.named_steps.get('model') or pipe.steps[-1][1]
