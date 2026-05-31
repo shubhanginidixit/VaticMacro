@@ -58,6 +58,57 @@ def _extract_model_r2(metrics_data, model_name):
             return _mean_or_value(val.get("r2") or val.get("r2_mean"))
     return None
 
+
+def _compute_yoy_r2_from_holdout(pipeline, holdout_path=None, value_col='CPI'):
+    """Compute YoY % R2 for a pipeline using models/holdout.csv when available.
+    Returns a float R2 or None on error.
+    """
+    try:
+        if holdout_path is None:
+            holdout_path = Path(BASE_DIR) / 'models' / 'holdout.csv'
+        else:
+            holdout_path = Path(holdout_path)
+        if not holdout_path.exists():
+            return None
+        hold = pd.read_csv(holdout_path)
+        if 'Date' not in hold.columns or value_col not in hold.columns:
+            return None
+        hold['Date'] = pd.to_datetime(hold['Date'])
+        hold = hold.sort_values('Date').reset_index(drop=True)
+        # build YoY true series and corresponding indices
+        y_true = []
+        rows = []
+        for idx, r in hold.iterrows():
+            d = r['Date']
+            y_ago = d - pd.Timedelta(days=365)
+            diffs = (hold['Date'] - y_ago).abs()
+            if diffs.empty:
+                continue
+            closest = diffs.idxmin()
+            past_val = hold.loc[closest, value_col]
+            if past_val and not pd.isna(past_val):
+                yoy = ((r[value_col] - past_val) / past_val) * 100
+                y_true.append(yoy)
+                rows.append(idx)
+        if len(rows) == 0:
+            return None
+        X = hold.drop(columns=[value_col, 'Date'], errors='ignore')
+        X_y = X.iloc[rows]
+        # pipeline may be wrapped in dict
+        pipe = pipeline if not isinstance(pipeline, dict) else (pipeline.get('pipeline') or pipeline.get('model') or None)
+        if pipe is None:
+            return None
+        yhat = pipe.predict(X_y)
+        if len(yhat) != len(y_true):
+            # try trimming or aligning
+            n = min(len(yhat), len(y_true))
+            yhat = yhat[:n]
+            y_true = y_true[:n]
+        from sklearn.metrics import r2_score
+        return float(r2_score(y_true, yhat))
+    except Exception:
+        return None
+
 # Base paths (make paths absolute so app runs from any cwd)
 BASE_DIR = Path(__file__).parent
 MODEL_PATH = str((BASE_DIR / "models" / "best_model.pkl"))
@@ -91,44 +142,6 @@ except Exception as e:
 # avoid showing metrics from a different model than the saved best model.
 
 
-def _mean_or_value(x):
-    try:
-        if isinstance(x, list) and len(x) > 0:
-            return float(sum([float(i) for i in x]) / len(x))
-        if x is None:
-            return None
-        return float(x)
-    except Exception:
-        return None
-
-
-def _extract_model_r2(metrics_data, model_name):
-    """Return a numeric r2 (or None) for the model_name from various metrics.json formats."""
-    if not metrics_data:
-        return None
-    import re
-    def _norm(s):
-        return re.sub(r'\W+', '', str(s or '').lower())
-    nm = _norm(model_name)
-    # Case A: metrics is a list of dicts
-    metrics_list = metrics_data.get("metrics")
-    if isinstance(metrics_list, list):
-        for m in metrics_list:
-            name_field = m.get("name") or m.get("model") or ""
-            if _norm(name_field) == nm or nm in _norm(name_field) or _norm(name_field) in nm:
-                return _mean_or_value(m.get("r2_mean") or m.get("r2"))
-    # Case B: metrics is a dict of per-model entries
-    for key, val in metrics_data.items():
-        if key == "best_model":
-            continue
-        if not isinstance(val, dict):
-            continue
-        key_nm = _norm(key)
-        val_name = _norm(val.get("name", ""))
-        if nm and (nm == key_nm or nm == val_name or nm in key_nm or key_nm in nm or nm in val_name or val_name in nm):
-            return _mean_or_value(val.get("r2") or val.get("r2_mean"))
-    return None
- 
 
 
 if Path(METRICS_PATH).exists():
@@ -784,6 +797,27 @@ def predict():
         display_model_r2 = display_model_r2
     if display_model_r2 is None:
         display_model_r2 = 0.0
+
+    # If the extracted R2 looks like it's on the wrong scale (e.g. huge negative from comparing
+    # raw CPI to percent-change predictions), try computing a YoY-aligned R2 from the holdout
+    # dataset using the loaded pipeline. This will correct the common CPI vs YoY mismatch.
+    try:
+        try_fix = False
+        if MODEL_R2 is None:
+            try_fix = True
+        else:
+            # If MODEL_R2 is extremely large in magnitude, it's likely a scale mismatch
+            try:
+                if abs(float(MODEL_R2)) > 100:
+                    try_fix = True
+            except Exception:
+                try_fix = True
+        if try_fix and Path(BASE_DIR / 'models' / 'holdout.csv').exists() and best_model is not None:
+            _yoy_r2 = _compute_yoy_r2_from_holdout(best_model, holdout_path=BASE_DIR / 'models' / 'holdout.csv')
+            if _yoy_r2 is not None:
+                display_model_r2 = _yoy_r2
+    except Exception:
+        pass
 
     # Prepare debug info to render on the predict page (helps browser-based debugging)
     try:
