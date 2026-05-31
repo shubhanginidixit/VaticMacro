@@ -1,1 +1,1 @@
-{"method": "POST", "form_keys": ["scenario_date", "wpi_index", "interest_rate", "usd_inr", "brent_crude", "gdp_proxy"]}
+{"method": "GET", "form_keys": []}
