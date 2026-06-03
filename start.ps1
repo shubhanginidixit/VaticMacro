@@ -1,22 +1,44 @@
-# Create and use a .venv, install requirements, then run the app (PowerShell)
-$ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$venv = Join-Path $root ".venv"
+# VaticMacro - Web Application Startup Script (PowerShell)
 
-if (-Not (Test-Path $venv)) {
-    Write-Host "Creating virtual environment at $venv..."
-    python -m venv $venv
-}
+Write-Host ""
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host "   VaticMacro Inflation Forecasting" -ForegroundColor Cyan
+Write-Host "       Web Application Starter" -ForegroundColor Cyan
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host ""
 
-$python = Join-Path $venv "Scripts\python.exe"
-if (-Not (Test-Path $python)) {
-    Write-Host "Could not find Python in the created venv. Ensure 'python' is on PATH and try again.";
+# Check if .venv exists
+if (-not (Test-Path ".venv")) {
+    Write-Host "Error: Virtual environment not found" -ForegroundColor Red
+    Write-Host "Please run: python -m venv .venv" -ForegroundColor Yellow
+    Read-Host "Press Enter to exit"
     exit 1
 }
 
-Write-Host "Upgrading pip and installing requirements..."
-& $python -m pip install --upgrade pip
-& $python -m pip install -r (Join-Path $root "requirements.txt")
+# Activate virtual environment
+Write-Host "Activating virtual environment..." -ForegroundColor Green
+& .\.venv\Scripts\Activate.ps1
 
-Write-Host "Starting VaticMacro app..."
-& $python (Join-Path $root "app.py")
+# Check if app.py exists
+if (-not (Test-Path "app.py")) {
+    Write-Host "Error: app.py not found" -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+# Start Flask app
+Write-Host ""
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host "Starting Flask Application..." -ForegroundColor Cyan
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Open browser to: http://localhost:5000" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host ""
+
+python app.py
+
+Read-Host "Press Enter to exit"
