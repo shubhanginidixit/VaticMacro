@@ -550,7 +550,7 @@ def _extract_feature_importances():
             result.append({
                 "name": display_name,
                 "value": f"{value:.4f}",
-                "percentage": pct
+                "percentage": float(pct)
             })
         return result
 
