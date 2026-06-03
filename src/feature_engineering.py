@@ -67,16 +67,6 @@ def create_features(df):
 
     df = df.dropna().reset_index(drop=True)
 
-    # Remove original raw indicator columns (keep only engineered percent-change and ratio features)
-    # This prevents large-magnitude raw features (e.g., GDP levels) from dominating the model
-    raw_cols = [col for col in df.columns if col in indicator_cols]
-    if raw_cols:
-        df = df.drop(columns=raw_cols)
-
-    # Drop extremely volatile oil-related change features which often spike (e.g., COVID shock)
-    volatile_patterns = ['datafilenew(india basket crude oil)', 'DCOILBRENTEU', 'oil_to_inr']
-    drop_cols = [c for c in df.columns if any(pat in c for pat in volatile_patterns)]
-    if drop_cols:
-        df = df.drop(columns=drop_cols)
+    # Kept raw indicator columns and volatile features as absolute levels are important for true forecasting.
     
     return df
