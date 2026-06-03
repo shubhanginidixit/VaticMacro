@@ -227,17 +227,13 @@ VaticMacro/
 │
 ├── app/
 │   └── templates/
-│       ├── dashboard.html
-│       ├── analysis.html
-│       ├── models.html
-│       ├── predict.html
-│       └── [Forecast/About pages...]
+│       └── cockpit.html (Single-page Command Center Dashboard)
 │
 ├── .venv/ (Local Python Environment)
 ├── requirements.txt
 ├── merge_data.py (Master script to build dataset)
-├── app.py (Upcoming Flask Web Application)
-├── main.py (Background training trigger)
+├── app.py (Flask Web Application API Backend)
+├── src/update_data.py (ML 180-day Forecast Data Imputer)
 └── README.md
 ```
 
