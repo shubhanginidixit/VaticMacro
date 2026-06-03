@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VaticMacro — Inflation Intelligence Cockpit</title>
+<meta name="description" content="Advanced macroeconomic inflation prediction dashboard for India. Real-time KPIs, ML-powered forecasting, and scenario analysis."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg-base: #0a0f15;
+    --bg-surface: #111820;
+    --bg-card: #171f28;
+    --bg-elevated: #1e2731;
+    --border-subtle: #252d38;
+    --border-default: #2e3744;
+    --text-primary: #e4e8ee;
+    --text-secondary: #8b95a5;
+    --text-muted: #5f6b7a;
+    --accent-blue: #6b9aff;
+    --accent-blue-dim: rgba(107, 154, 255, 0.12);
+    --accent-green: #4edea3;
+    --accent-red: #ff6b6b;
+    --accent-amber: #fbbf24;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    overflow: hidden;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* View transitions */
+  #main-content {
+    animation: fadeSlideIn 0.3s ease-out;
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Card hover micro-animation */
+  .kpi-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    border-color: var(--border-default);
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover {
+    background: rgba(107, 154, 255, 0.06);
+    color: var(--accent-blue);
+  }
+  .nav-item.active {
+    background: rgba(107, 154, 255, 0.08);
+    border-left-color: var(--accent-blue);
+    color: var(--accent-blue);
+    font-weight: 600;
+  }
+
+  /* Gauge bar */
+  .gauge-zone { transition: opacity 0.3s ease; }
+  .gauge-pointer {
+    transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Input styling */
+  .scenario-input {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    text-align: right;
+    width: 110px;
+  }
+  .scenario-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(107, 154, 255, 0.15);
+  }
+
+  /* Preset button */
+  .preset-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .preset-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+  .preset-btn.active { background: var(--accent-blue-dim); border-color: var(--accent-blue); color: var(--accent-blue); }
+
+  /* Predict CTA button */
+  .btn-predict {
+    background: linear-gradient(135deg, #4d7cff 0%, #6b9aff 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .btn-predict:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(77, 124, 255, 0.35); }
+  .btn-predict:active { transform: translateY(0); }
+  .btn-predict:disabled { opacity: 0.5; cursor: wait; transform: none; box-shadow: none; }
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-content {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    padding: 24px;
+    width: 640px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Env warning banner */
+  .env-banner {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    animation: fadeSlideIn 0.3s ease;
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Metrics table */
+  .metrics-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 12px 16px;
+    text-align: right;
+  }
+  .metrics-table th:first-child { text-align: left; }
+  .metrics-table td {
+    padding: 12px 16px;
+    text-align: right;
+    font-size: 14px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .metrics-table td:first-child { text-align: left; }
+  .metrics-table tr:hover { background: rgba(107, 154, 255, 0.04); }
+</style>
+</head>
+<body class="flex h-screen antialiased">
+
+<!-- ===== SIDEBAR ===== -->
+<nav id="sidebar" class="fixed left-0 top-0 h-full w-[220px] border-r flex flex-col py-6 z-30" style="background: var(--bg-surface); border-color: var(--border-subtle);">
+  <div class="px-6 mb-8">
+    <h1 class="font-bold text-lg tracking-tight" style="color: var(--text-primary);">VaticMacro</h1>
+    <p class="text-xs mt-1" style="color: var(--text-muted);">Inflation Intelligence</p>
+  </div>
+  <ul class="flex-1 space-y-1 px-3" id="nav-list">
+    <li>
+      <a href="#command-center" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm" data-view="command-center">
+        <span class="material-symbols-outlined text-[20px]">dashboard</span>
+        <span>Command Center</span>
+      </a>
+    </li>
+    <li>
+      <a href="#predictive-sandbox" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm" data-view="predictive-sandbox">
+        <span class="material-symbols-outlined text-[20px]">query_stats</span>
+        <span>Predictive Sandbox</span>
+      </a>
+    </li>
+    <li>
+      <a href="#model-registry" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm" data-view="model-registry">
+        <span class="material-symbols-outlined text-[20px]">hub</span>
+        <span>Model Registry</span>
+      </a>
+    </li>
+    <li>
+      <a href="#about" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm" data-view="about">
+        <span class="material-symbols-outlined text-[20px]">info</span>
+        <span>About</span>
+      </a>
+    </li>
+  </ul>
+  <div class="px-6 mt-auto">
+    <p class="text-[11px]" style="color: var(--text-muted);">v2.0 • IEEE 2025</p>
+  </div>
+</nav>
+
+<!-- ===== MAIN AREA ===== -->
+<div class="ml-[220px] flex-1 flex flex-col h-screen overflow-hidden">
+  <!-- Header bar -->
+  <header class="flex items-center justify-between h-14 px-6 shrink-0" style="border-bottom: 1px solid var(--border-subtle);">
+    <span class="text-sm" style="color: var(--text-secondary);" id="breadcrumb">Dashboard &gt; <span class="font-medium" style="color: var(--text-primary);">Command Center</span></span>
+    <div class="flex items-center gap-3">
+      <span class="text-xs px-2.5 py-1 rounded-md" style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--accent-green);" id="status-badge">Live</span>
+    </div>
+  </header>
+
+  <!-- Environment warning banner (if applicable) -->
+  {% if env_warning %}
+  <div class="px-6 pt-4" id="env-banner-container">
+    <div class="env-banner">
+      <span class="material-symbols-outlined text-[20px] mt-0.5" style="color: var(--accent-amber);">warning</span>
+      <div class="flex-1">
+        <p class="text-sm font-medium" style="color: var(--accent-amber);">Environment Mismatch Detected</p>
+        <p class="text-xs mt-1" style="color: var(--text-secondary); white-space: pre-line;">{{ env_warning }}</p>
+      </div>
+      <button onclick="this.closest('.env-banner').remove()" class="text-xs px-2 py-1 rounded" style="color: var(--text-muted); border: 1px solid var(--border-subtle);">Dismiss</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Dynamic content area -->
+  <main class="flex-1 overflow-y-auto p-6" id="main-content">
+    <div class="flex items-center justify-center h-full">
+      <div class="spinner"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== MODAL CONTAINER ===== -->
+<div id="modal-root"></div>
+
+<script>
+// =========================================================================
+// SPA Router — hash-based navigation
+// =========================================================================
+
+// Track active Chart.js instances so we can destroy them on view switch
+let activeCharts = [];
+
+function destroyCharts() {
+  activeCharts.forEach(c => { try { c.destroy(); } catch(e) {} });
+  activeCharts = [];
+}
+
+// Chart.js global defaults for our dark theme
+Chart.defaults.color = '#8b95a5';
+Chart.defaults.borderColor = '#252d38';
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+const routes = {
+  'command-center':     { loader: loadCommandCenter,     label: 'Command Center',     icon: 'dashboard' },
+  'predictive-sandbox': { loader: loadPredictiveSandbox, label: 'Predictive Sandbox', icon: 'query_stats' },
+  'model-registry':     { loader: loadModelRegistry,     label: 'Model Registry',     icon: 'hub' },
+  'about':              { loader: loadAbout,             label: 'About',              icon: 'info' },
+};
+
+function navigate() {
+  const hash = (location.hash || '#command-center').replace('#', '');
+  const route = routes[hash] || routes['command-center'];
+
+  // Update active sidebar item
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.view === hash);
+  });
+
+  // Update breadcrumb
+  document.getElementById('breadcrumb').innerHTML =
+    `Dashboard &gt; <span class="font-medium" style="color: var(--text-primary);">${route.label}</span>`;
+
+  // Destroy old charts, show spinner, load new view
+  destroyCharts();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="flex items-center justify-center h-full"><div class="spinner"></div></div>';
+  main.style.animation = 'none';
+  // Force reflow to restart animation
+  void main.offsetHeight;
+  main.style.animation = 'fadeSlideIn 0.3s ease-out';
+
+  route.loader(main);
+}
+
+window.addEventListener('hashchange', navigate);
+window.addEventListener('DOMContentLoaded', () => {
+  if (!location.hash) location.hash = '#command-center';
+  navigate();
+});
+
+
+// =========================================================================
+// Helpers
+// =========================================================================
+
+async function fetchJSON(url, opts) {
+  const resp = await fetch(url, opts);
+  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+  return resp.json();
+}
+
+function card(title, value, subtitle, subtitleColor) {
+  const sc = subtitleColor || 'var(--text-muted)';
+  return `<div class="kpi-card rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+    <p class="text-[11px] uppercase tracking-wider mb-2" style="color: var(--text-muted);">${title}</p>
+    <p class="text-2xl font-bold" style="color: var(--text-primary);">${value}</p>
+    <p class="text-xs mt-2" style="color: ${sc};">${subtitle}</p>
+  </div>`;
+}
+
+function changeColor(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return 'var(--text-muted)';
+  return n > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+}
+
+function inflationZoneColor(val) {
+  if (val < 4) return 'var(--accent-green)';
+  if (val <= 6) return 'var(--accent-amber)';
+  return 'var(--accent-red)';
+}
+
+
+// =========================================================================
+// VIEW 1: Command Center (Dashboard + Analysis)
+// =========================================================================
+
+async function loadCommandCenter(container) {
+  try {
+    const data = await fetchJSON('/api/command-center');
+    const d = data.dashboard;
+    const a = data.analysis;
+
+    container.innerHTML = `
+      <!-- KPI Row 1 -->
+      <div class="grid grid-cols-4 gap-4 mb-4">
+        ${card('Inflation Rate (YoY)', d.inflation_rate + '%',
+               (d.inflation_change >= 0 ? '+' : '') + d.inflation_change + '% from last month',
+               changeColor(d.inflation_change))}
+        ${card('CPI Index', d.cpi_value,
+               (d.cpi_change >= 0 ? '+' : '') + d.cpi_change + '% monthly',
+               changeColor(d.cpi_change))}
+        ${card('WPI Index', d.wpi_value,
+               (d.wpi_change >= 0 ? '+' : '') + d.wpi_change + '% monthly',
+               changeColor(d.wpi_change))}
+        ${card('RBI Repo Rate', d.interest_rate + '%', 'Current policy rate', 'var(--text-muted)')}
+      </div>
+
+      <!-- KPI Row 2 -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        ${card('USD/INR', '₹' + d.usdinr_value,
+               (d.usdinr_change >= 0 ? '+' : '') + d.usdinr_change + '%',
+               changeColor(d.usdinr_change))}
+        ${card('Brent Crude', '$' + d.brent_value,
+               (d.brent_change >= 0 ? '+' : '') + d.brent_change + '%',
+               changeColor(d.brent_change))}
+        <div class="kpi-card rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border-subtle);" data-indicator="peak">
+          <p class="text-[11px] uppercase tracking-wider mb-2" style="color: var(--text-muted);">Peak Inflation</p>
+          <p class="text-2xl font-bold" style="color: var(--accent-red);">${d.peak_inflation}%</p>
+          <p class="text-xs mt-2" style="color: var(--text-muted);">${d.peak_date}</p>
+        </div>
+        <div class="kpi-card rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border-subtle);" data-indicator="low">
+          <p class="text-[11px] uppercase tracking-wider mb-2" style="color: var(--text-muted);">Lowest Inflation</p>
+          <p class="text-2xl font-bold" style="color: var(--accent-green);">${d.low_inflation}%</p>
+          <p class="text-xs mt-2" style="color: var(--text-muted);">${d.low_date}</p>
+        </div>
+      </div>
+
+      <!-- Inflation History Chart -->
+      <div class="rounded-xl p-6 mb-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xs uppercase tracking-wider font-medium" style="color: var(--text-muted);">Inflation History (YoY %)</h2>
+          <span class="text-xs" style="color: var(--text-muted);">${d.num_observations} observations • ${d.num_features} indicators</span>
+        </div>
+        <div style="height: 280px;"><canvas id="cc-inflation-chart"></canvas></div>
+      </div>
+
+      <!-- Correlation + Summary Row -->
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <!-- Correlation Matrix -->
+        <div class="col-span-2 rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <h2 class="text-xs uppercase tracking-wider font-medium mb-4" style="color: var(--text-muted);">Feature Correlation Matrix</h2>
+          <div class="overflow-auto">
+            <table class="w-full text-xs" style="color: var(--text-primary);">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-subtle);">
+                  <th class="p-2 text-left" style="color: var(--text-muted);">Variable</th>
+                  ${a.features.map(f => `<th class="p-2 text-center" style="color: var(--text-muted); font-size: 10px;">${f.substring(0, 5)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${a.features.map((f, i) => {
+                  const row = a.corr_matrix[f] || {};
+                  return `<tr style="${i % 2 === 0 ? '' : 'background: var(--bg-elevated);'}">
+                    <td class="p-2 font-semibold">${f}</td>
+                    ${a.features.map(of => {
+                      const v = row[of] || 0;
+                      const color = v > 0.7 ? 'var(--accent-green)' : (v < -0.3 ? 'var(--accent-red)' : 'var(--text-primary)');
+                      return `<td class="p-2 text-center" style="color: ${color};">${v.toFixed(2)}</td>`;
+                    }).join('')}
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Key Findings + Stats -->
+        <div class="space-y-4">
+          <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <h2 class="text-xs uppercase tracking-wider font-medium mb-4" style="color: var(--text-muted);">Key Findings</h2>
+            <ul class="space-y-3 text-sm">
+              ${a.key_findings.map(f => `<li class="flex gap-2"><span style="color: var(--accent-blue);">•</span><span style="color: var(--text-secondary);">${f}</span></li>`).join('')}
+            </ul>
+          </div>
+          <div class="grid grid-cols-1 gap-3">
+            ${card('Avg Inflation (24m)', d.avg_inflation + '%', '', 'var(--text-muted)')}
+            <div class="rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+              <p class="text-[11px] uppercase tracking-wider mb-2" style="color: var(--text-muted);">Current Trend</p>
+              <p class="text-2xl font-bold" style="color: ${d.trend === 'Rising' ? 'var(--accent-red)' : 'var(--accent-green)'};">${d.trend}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Render inflation chart
+    const ctx = document.getElementById('cc-inflation-chart').getContext('2d');
+    const pointColors = d.inflation_history.values.map(v => inflationZoneColor(v));
+    activeCharts.push(new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: d.inflation_history.dates,
+        datasets: [{
+          label: 'YoY Inflation %',
+          data: d.inflation_history.values,
+          borderColor: 'var(--accent-blue)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          tension: 0.3,
+          fill: { target: 'origin', above: 'rgba(107, 154, 255, 0.06)' }
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#171f28', titleColor: '#8b95a5', bodyColor: '#e4e8ee',
+            borderColor: '#2e3744', borderWidth: 1,
+            callbacks: { label: ctx => ctx.parsed.y + '% YoY' }
+          }
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 12, font: { size: 11 } }, grid: { color: '#1e2731' } },
+          y: { ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#1e2731' } }
+        }
+      }
+    }));
+
+    // Wire up KPI card click → indicator detail modal
+    container.querySelectorAll('.kpi-card').forEach(card => {
+      card.addEventListener('click', () => {
+        // Try to find which indicator this card represents
+        const title = card.querySelector('p')?.textContent?.trim();
+        showIndicatorModal(title, a);
+      });
+    });
+
+  } catch (err) {
+    container.innerHTML = `<div class="flex items-center justify-center h-full">
+      <p class="text-sm" style="color: var(--accent-red);">Failed to load Command Center: ${err.message}</p>
+    </div>`;
+  }
+}
+
+function showIndicatorModal(title, analysisData) {
+  // Map card titles to analysis data keys
+  const mapping = {
+    'Inflation Rate (YoY)': 'CPI',
+    'CPI Index': 'CPI',
+    'WPI Index': 'WPI',
+    'RBI Repo Rate': 'Interest Rate',
+    'USD/INR': 'USD/INR',
+    'Brent Crude': 'Brent Crude',
+    'Peak Inflation': 'CPI',
+    'Lowest Inflation': 'CPI',
+    'Avg Inflation (24m)': 'CPI',
+  };
+
+  const indicatorKey = mapping[title] || 'CPI';
+  const indicatorData = analysisData.analysis_data[indicatorKey];
+  const corrRow = analysisData.corr_matrix[indicatorKey] || {};
+
+  if (!indicatorData) return;
+
+  const modalRoot = document.getElementById('modal-root');
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
+      <div class="modal-content">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg font-bold">${indicatorKey} — Historical Analysis</h2>
+          <button onclick="closeModal()" class="text-sm px-3 py-1 rounded-lg" style="border: 1px solid var(--border-subtle); color: var(--text-muted);">✕ Close</button>
+        </div>
+        <div style="height: 220px;" class="mb-6"><canvas id="modal-ts-chart"></canvas></div>
+        <h3 class="text-xs uppercase tracking-wider mb-3" style="color: var(--text-muted);">Correlation with Other Indicators</h3>
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          ${Object.entries(corrRow).map(([k, v]) => `
+            <div class="rounded-lg p-3" style="background: var(--bg-base); border: 1px solid var(--border-subtle);">
+              <p class="text-[10px] uppercase" style="color: var(--text-muted);">${k}</p>
+              <p class="text-lg font-bold" style="color: ${v > 0.7 ? 'var(--accent-green)' : (v < -0.3 ? 'var(--accent-red)' : 'var(--text-primary)') };">${v.toFixed(2)}</p>
+            </div>
+          `).join('')}
+        </div>
+        <h3 class="text-xs uppercase tracking-wider mb-3" style="color: var(--text-muted);">Distribution</h3>
+        <div style="height: 160px;"><canvas id="modal-hist-chart"></canvas></div>
+      </div>
+    </div>
+  `;
+
+  // Time series chart
+  const tsCtx = document.getElementById('modal-ts-chart').getContext('2d');
+  // Show last 60 points to keep it readable
+  const tsLabels = indicatorData.dates.slice(-60);
+  const tsValues = indicatorData.values.slice(-60);
+  new Chart(tsCtx, {
+    type: 'line',
+    data: {
+      labels: tsLabels,
+      datasets: [{ label: indicatorKey, data: tsValues, borderColor: '#6b9aff', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: { target: 'origin', above: 'rgba(107,154,255,0.08)' } }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#1e2731' } },
+        y: { ticks: { font: { size: 10 } }, grid: { color: '#1e2731' } }
+      }
+    }
+  });
+
+  // Histogram
+  const histCtx = document.getElementById('modal-hist-chart').getContext('2d');
+  new Chart(histCtx, {
+    type: 'bar',
+    data: {
+      labels: indicatorData.hist_labels,
+      datasets: [{ label: 'Frequency', data: indicatorData.hist_counts, backgroundColor: 'rgba(107, 154, 255, 0.5)', borderRadius: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 10, font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { font: { size: 10 } }, grid: { color: '#1e2731' } }
+      }
+    }
+  });
+}
+
+function closeModal() {
+  document.getElementById('modal-root').innerHTML = '';
+}
+
+
+// =========================================================================
+// VIEW 2: Predictive Sandbox (Predict + Forecast)
+// =========================================================================
+
+let sandboxForecastData = null;
+
+async function loadPredictiveSandbox(container) {
+  try {
+    const data = await fetchJSON('/api/predictive-sandbox');
+    sandboxForecastData = data.forecast;
+    const defs = data.defaults;
+
+    container.innerHTML = `
+      <div class="grid grid-cols-5 gap-6 h-full" style="min-height: 0;">
+        <!-- Left: Inputs (2 cols) -->
+        <div class="col-span-2 overflow-y-auto pr-2">
+          <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <h2 class="text-xl font-bold mb-1">Scenario Builder</h2>
+            <p class="text-xs mb-5" style="color: var(--text-muted);">Adjust economic indicators to predict inflation</p>
+
+            <!-- Presets -->
+            <p class="text-[11px] uppercase tracking-wider mb-2" style="color: var(--text-muted);">Preset Scenarios</p>
+            <div class="flex gap-2 mb-6" id="preset-btns">
+              <button class="preset-btn active" data-scenario="current">Current Economy</button>
+              <button class="preset-btn" data-scenario="oil">Oil Shock</button>
+              <button class="preset-btn" data-scenario="rate">Rate Hike</button>
+            </div>
+
+            <!-- Input Fields -->
+            <div class="space-y-4" id="input-fields">
+              <div class="flex items-center justify-between">
+                <label class="text-sm" style="color: var(--text-secondary);">WPI Index</label>
+                <input type="number" id="inp-wpi" class="scenario-input" step="0.1" value="${defs.wpi_index}"/>
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm" style="color: var(--text-secondary);">Interest Rate (%)</label>
+                <input type="number" id="inp-ir" class="scenario-input" step="0.05" value="${defs.interest_rate}"/>
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm" style="color: var(--text-secondary);">USD/INR Rate</label>
+                <input type="number" id="inp-usd" class="scenario-input" step="0.1" value="${defs.usd_inr}"/>
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm" style="color: var(--text-secondary);">Brent Crude ($/bbl)</label>
+                <input type="number" id="inp-brent" class="scenario-input" step="0.5" value="${defs.brent_crude}"/>
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm" style="color: var(--text-secondary);">GDP Proxy</label>
+                <input type="number" id="inp-gdp" class="scenario-input" step="0.1" value="${defs.gdp_proxy}"/>
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm" style="color: var(--text-secondary);">Scenario Date</label>
+                <input type="date" id="inp-date" class="scenario-input" style="width: 150px;"/>
+              </div>
+            </div>
+
+            <button id="btn-predict" class="btn-predict mt-6">
+              <span class="material-symbols-outlined text-[20px]">psychology</span>
+              Predict Inflation
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Results (3 cols) -->
+        <div class="col-span-3 overflow-y-auto pl-2 space-y-4">
+          <!-- Prediction Result -->
+          <div class="rounded-xl p-6" id="prediction-result" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <p class="text-[11px] uppercase tracking-wider mb-3" style="color: var(--text-muted);">Model Output</p>
+            <div class="mb-6">
+              <p class="text-sm mb-1" style="color: var(--text-muted);">Predicted Inflation:</p>
+              <p class="text-5xl font-extrabold" id="pred-value" style="color: var(--text-primary);">—</p>
+            </div>
+            <!-- Gauge -->
+            <div class="mb-6" id="gauge-container" style="display: none;">
+              <div class="flex justify-between text-[10px] mb-1" style="color: var(--text-muted);">
+                <span>0%</span><span>Target Band (2-6%)</span><span>10%+</span>
+              </div>
+              <div class="relative h-5 rounded-lg overflow-hidden flex" style="background: var(--bg-base); border: 1px solid var(--border-subtle);">
+                <div class="w-[20%] gauge-zone" style="background: rgba(78, 222, 163, 0.15);"></div>
+                <div class="w-[40%] gauge-zone" style="background: rgba(251, 191, 36, 0.12);"></div>
+                <div class="w-[40%] gauge-zone" style="background: rgba(255, 107, 107, 0.12);"></div>
+                <div id="gauge-pointer" class="gauge-pointer absolute top-0 bottom-0 w-0.5 bg-white z-10" style="left: 0%; box-shadow: 0 0 8px rgba(255,255,255,0.8);"></div>
+              </div>
+            </div>
+            <!-- Interpretation -->
+            <div id="interpretation-box" style="display: none;" class="rounded-lg p-4" >
+              <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-[16px]" style="color: var(--accent-blue);">psychology_alt</span>
+                <span class="text-sm font-semibold">Synthesis</span>
+              </div>
+              <p class="text-sm" id="interpretation-text" style="color: var(--text-secondary);"></p>
+            </div>
+            <div class="mt-4 pt-3 flex justify-between text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-muted);">
+              <span>Model: ${data.model_name}</span>
+              <span>R² = <span style="color: ${data.model_r2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; font-weight: 600;">${data.model_r2.toFixed(4)}</span></span>
+            </div>
+          </div>
+
+          <!-- Historical Forecast Bar Chart -->
+          <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <h2 class="text-xs uppercase tracking-wider font-medium mb-4" style="color: var(--text-muted);">12-Month Inflation Trend</h2>
+            <div style="height: 240px;"><canvas id="sandbox-forecast-chart"></canvas></div>
+            <div class="mt-4 pt-3 flex gap-6 text-[11px]" style="border-top: 1px solid var(--border-subtle); color: var(--text-muted);">
+              <span><span style="color: var(--accent-green);">✓</span> Below 4% (Comfort)</span>
+              <span><span style="color: var(--accent-amber);">⚠</span> 4-6% (Target)</span>
+              <span><span style="color: var(--accent-red);">✗</span> Above 6%</span>
+            </div>
+          </div>
+
+          <!-- Current Indicators -->
+          <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <h2 class="text-xs uppercase tracking-wider font-medium mb-3" style="color: var(--text-muted);">Current Indicators</h2>
+            <div class="grid grid-cols-4 gap-4 text-sm">
+              <div><p class="text-[10px] uppercase" style="color: var(--text-muted);">Inflation</p><p class="font-semibold" style="color: var(--accent-blue);">${sandboxForecastData.current_inflation}%</p></div>
+              <div><p class="text-[10px] uppercase" style="color: var(--text-muted);">CPI</p><p class="font-semibold">${sandboxForecastData.current_cpi}</p></div>
+              <div><p class="text-[10px] uppercase" style="color: var(--text-muted);">WPI</p><p class="font-semibold">${sandboxForecastData.current_wpi}</p></div>
+              <div><p class="text-[10px] uppercase" style="color: var(--text-muted);">Rate</p><p class="font-semibold">${sandboxForecastData.current_rate}%</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Render forecast bar chart
+    renderForecastChart();
+
+    // Wire presets
+    const presets = {
+      current: { wpi: 136.30, ir: 6.50, usd: 83.42, brent: 80.92, gdp: 3500.0 },
+      oil:     { wpi: 142.10, ir: 6.50, usd: 85.10, brent: 110.00, gdp: 3400.0 },
+      rate:    { wpi: 132.50, ir: 7.50, usd: 82.50, brent: 75.00, gdp: 3300.0 }
+    };
+
+    document.querySelectorAll('#preset-btns .preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#preset-btns .preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const p = presets[btn.dataset.scenario];
+        if (p) {
+          document.getElementById('inp-wpi').value = p.wpi;
+          document.getElementById('inp-ir').value = p.ir;
+          document.getElementById('inp-usd').value = p.usd;
+          document.getElementById('inp-brent').value = p.brent;
+          document.getElementById('inp-gdp').value = p.gdp;
+        }
+      });
+    });
+
+    // Wire predict button
+    document.getElementById('btn-predict').addEventListener('click', runPrediction);
+
+  } catch (err) {
+    container.innerHTML = `<div class="flex items-center justify-center h-full">
+      <p class="text-sm" style="color: var(--accent-red);">Failed to load Predictive Sandbox: ${err.message}</p>
+    </div>`;
+  }
+}
+
+function renderForecastChart() {
+  if (!sandboxForecastData) return;
+  const ctx = document.getElementById('sandbox-forecast-chart')?.getContext('2d');
+  if (!ctx) return;
+
+  const barColors = sandboxForecastData.inflation_rates.map(r => {
+    if (r < 4) return 'rgba(78, 222, 163, 0.7)';
+    if (r <= 6) return 'rgba(251, 191, 36, 0.7)';
+    return 'rgba(255, 107, 107, 0.7)';
+  });
+
+  activeCharts.push(new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sandboxForecastData.months.slice(-18),
+      datasets: [{
+        label: 'YoY Inflation %',
+        data: sandboxForecastData.inflation_rates.slice(-18),
+        backgroundColor: barColors.slice(-18),
+        borderRadius: 4,
+        maxBarThickness: 28
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#171f28', titleColor: '#8b95a5', bodyColor: '#e4e8ee',
+          borderColor: '#2e3744', borderWidth: 1,
+          callbacks: { label: ctx => ctx.parsed.y + '% YoY' }
+        }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#1e2731' } }
+      }
+    }
+  }));
+}
+
+async function runPrediction() {
+  const btn = document.getElementById('btn-predict');
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Predicting...';
+
+  try {
+    const payload = {
+      wpi_index: document.getElementById('inp-wpi').value,
+      interest_rate: document.getElementById('inp-ir').value,
+      usd_inr: document.getElementById('inp-usd').value,
+      brent_crude: document.getElementById('inp-brent').value,
+      gdp_proxy: document.getElementById('inp-gdp').value,
+      scenario_date: document.getElementById('inp-date').value
+    };
+
+    const result = await fetchJSON('/api/predictive-sandbox', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    // Update prediction display
+    const predEl = document.getElementById('pred-value');
+    if (result.display_prediction !== null && result.display_prediction !== undefined) {
+      predEl.textContent = result.display_prediction + '%';
+      predEl.style.color = inflationZoneColor(result.display_prediction);
+
+      // Gauge
+      const gauge = document.getElementById('gauge-container');
+      gauge.style.display = 'block';
+      const pct = Math.min(Math.max(result.display_prediction / 10 * 100, 0), 100);
+      document.getElementById('gauge-pointer').style.left = pct + '%';
+
+      // Interpretation
+      const interp = document.getElementById('interpretation-box');
+      interp.style.display = 'block';
+      // Pick border color based on zone
+      const zoneColor = result.display_prediction < 2 ? 'var(--accent-blue)' :
+                         result.display_prediction <= 6 ? 'var(--accent-green)' : 'var(--accent-red)';
+      interp.style.background = 'var(--bg-base)';
+      interp.style.borderLeft = '4px solid ' + zoneColor;
+      document.getElementById('interpretation-text').textContent = result.interpretation_text;
+    } else {
+      predEl.textContent = '—';
+    }
+
+  } catch (err) {
+    document.getElementById('interpretation-box').style.display = 'block';
+    document.getElementById('interpretation-text').textContent = 'Prediction failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origHTML;
+  }
+}
+
+
+// =========================================================================
+// VIEW 3: Model Registry
+// =========================================================================
+
+async function loadModelRegistry(container) {
+  try {
+    const data = await fetchJSON('/api/model-registry');
+
+    container.innerHTML = `
+      <!-- Best Model Hero -->
+      <div class="rounded-xl p-6 mb-6 flex justify-between items-center" style="background: var(--bg-card); border-left: 4px solid var(--accent-blue); border-top: 1px solid var(--border-subtle); border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+        <div>
+          <p class="text-[11px] uppercase tracking-wider mb-2" style="color: var(--text-muted);">Best Performing Model</p>
+          <p class="text-3xl font-bold" style="color: var(--accent-blue);">${data.best_model_name}</p>
+        </div>
+        <div class="flex gap-8">
+          <div>
+            <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--text-muted);">R² Score</p>
+            <p class="text-xl font-semibold" style="color: ${data.best_model_r2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">${data.best_model_r2.toFixed(4)}</p>
+          </div>
+          <div>
+            <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--text-muted);">MAE</p>
+            <p class="text-xl font-semibold">${parseFloat(data.best_model_mae).toFixed(2)}%</p>
+          </div>
+          <div>
+            <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--text-muted);">RMSE</p>
+            <p class="text-xl font-semibold">${parseFloat(data.best_model_rmse).toFixed(2)}%</p>
+          </div>
+        </div>
+      </div>
+
+      ${data.best_model_r2 < 0 ? `
+      <div class="rounded-xl p-4 mb-6 flex items-center gap-3" style="background: rgba(255, 107, 107, 0.08); border: 1px solid rgba(255, 107, 107, 0.25);">
+        <span class="material-symbols-outlined" style="color: var(--accent-red);">warning</span>
+        <p class="text-sm" style="color: var(--accent-red);">Negative R² means the model performs worse than predicting the mean. Model needs retraining with better features or data.</p>
+      </div>` : ''}
+
+      <!-- Metrics Table -->
+      <div class="rounded-xl overflow-hidden mb-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+        <table class="w-full metrics-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>MAE</th>
+              <th>RMSE</th>
+              <th>R² Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.models_metrics.length > 0 ? data.models_metrics.map(m => {
+              const isBest = m.name === data.best_model_name;
+              const accent = isBest ? 'color: var(--accent-blue); font-weight: 600;' : '';
+              const r2color = m.r2_mean < 0 ? 'color: var(--accent-red);' : (isBest ? accent : '');
+              const rowBg = isBest ? 'background: rgba(107, 154, 255, 0.06); border-left: 3px solid var(--accent-blue);' : '';
+              return `<tr style="${rowBg}">
+                <td style="${accent}">${m.name}</td>
+                <td style="${accent}">${parseFloat(m.mae).toFixed(2)}%</td>
+                <td style="${accent}">${parseFloat(m.rmse).toFixed(2)}%</td>
+                <td style="${r2color}">${parseFloat(m.r2_mean).toFixed(4)}</td>
+              </tr>`;
+            }).join('') : `<tr><td colspan="4" class="italic" style="color: var(--text-muted);">No model metrics available. Train models first.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid grid-cols-2 gap-6">
+        <!-- Feature Importances -->
+        <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <h2 class="text-xs uppercase tracking-wider font-medium mb-4" style="color: var(--text-muted);">Feature Importance (${data.best_model_name})</h2>
+          <div class="space-y-3">
+            ${data.feature_importances.map(f => `
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span style="color: var(--text-secondary);">${f.name}</span>
+                  <span style="color: var(--text-primary);">${f.value}</span>
+                </div>
+                <div class="w-full h-2 rounded-full overflow-hidden" style="background: var(--bg-base);">
+                  <div class="h-2 rounded-full transition-all duration-700" style="width: ${f.percentage}%; background: var(--accent-blue); opacity: ${(f.percentage / 100) * 0.6 + 0.4};"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Predicted vs Actual Chart -->
+        <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <h2 class="text-xs uppercase tracking-wider font-medium mb-4" style="color: var(--text-muted);">Predicted vs Actual (Holdout)</h2>
+          <div style="height: 280px;"><canvas id="mr-pred-chart"></canvas></div>
+        </div>
+      </div>
+    `;
+
+    // Render Predicted vs Actual chart
+    if (data.prediction_chart_data && data.prediction_chart_data.dates) {
+      const ctx = document.getElementById('mr-pred-chart').getContext('2d');
+      activeCharts.push(new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.prediction_chart_data.dates,
+          datasets: [
+            {
+              label: 'Actual', data: data.prediction_chart_data.actual,
+              borderColor: '#e4e8ee', borderWidth: 2, pointRadius: 4,
+              pointBackgroundColor: '#e4e8ee', tension: 0.2
+            },
+            {
+              label: data.best_model_name, data: data.prediction_chart_data.best_model_predictions,
+              borderColor: '#6b9aff', borderWidth: 2, borderDash: [5, 5],
+              pointRadius: 4, pointBackgroundColor: '#6b9aff', tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true, position: 'top', align: 'end',
+              labels: { font: { size: 11 }, boxWidth: 10, usePointStyle: true }
+            }
+          },
+          scales: {
+            x: { ticks: { font: { size: 11 } }, grid: { color: '#1e2731' } },
+            y: { ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#1e2731' } }
+          }
+        }
+      }));
+    }
+
+  } catch (err) {
+    container.innerHTML = `<div class="flex items-center justify-center h-full">
+      <p class="text-sm" style="color: var(--accent-red);">Failed to load Model Registry: ${err.message}</p>
+    </div>`;
+  }
+}
+
+
+// =========================================================================
+// VIEW 4: About
+// =========================================================================
+
+function loadAbout(container) {
+  container.innerHTML = `
+    <div class="max-w-4xl">
+      <p class="text-xs uppercase tracking-[0.25em] mb-3" style="color: var(--text-muted);">About VaticMacro</p>
+      <h1 class="text-4xl font-bold mb-4">Indian macroeconomic inflation research, in one cockpit.</h1>
+      <p class="text-lg mb-8" style="color: var(--text-secondary); max-width: 680px;">
+        VaticMacro combines historical macroeconomic data, feature engineering, and ML forecasting models to let you inspect inflation trends, compare indicators, and test scenarios — all from the browser.
+      </p>
+
+      <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-[20px]" style="color: var(--accent-blue);">dashboard</span>
+            <h2 class="font-semibold">Command Center</h2>
+          </div>
+          <p class="text-sm" style="color: var(--text-secondary);">Live KPI cards, inflation history, correlation analysis, and indicator deep-dives.</p>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-[20px]" style="color: var(--accent-green);">query_stats</span>
+            <h2 class="font-semibold">Predictive Sandbox</h2>
+          </div>
+          <p class="text-sm" style="color: var(--text-secondary);">Adjust WPI, rates, and FX to test inflation scenarios with live ML predictions.</p>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-[20px]" style="color: var(--accent-amber);">hub</span>
+            <h2 class="font-semibold">Model Registry</h2>
+          </div>
+          <p class="text-sm" style="color: var(--text-secondary);">Compare Ridge, RandomForest, and XGBoost performance with holdout metrics.</p>
+        </div>
+      </div>
+
+      <div class="rounded-xl p-6" style="background: var(--bg-card); border: 1px solid var(--border-subtle);">
+        <h2 class="text-lg font-semibold mb-3">Getting Started</h2>
+        <p class="text-sm leading-6" style="color: var(--text-secondary);">
+          Start the app with <span style="color: var(--text-primary); font-family: monospace; font-size: 13px;">python app.py</span> and open
+          <span style="color: var(--text-primary); font-family: monospace; font-size: 13px;">http://127.0.0.1:5000</span>.
+          All views load asynchronously from the sidebar — no page reloads needed.
+        </p>
+        <div class="mt-4 pt-4 flex gap-6 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-muted);">
+          <span>Python + Flask</span>
+          <span>Scikit-learn / XGBoost</span>
+          <span>Chart.js</span>
+          <span>IEEE 2025</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
