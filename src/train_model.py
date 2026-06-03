@@ -171,7 +171,8 @@ def train(df):
         'pipeline': best_pipeline,
         'feature_columns': list(X.columns),
         'best_model_choice': chosen,
-        'model_name': f'{chosen}'
+        'model_name': f'{chosen}',
+        'environment': _capture_environment(),
     }
     joblib.dump(model_artifact, 'models/best_model.pkl')
 
@@ -184,7 +185,7 @@ def train(df):
     saved_models = []
     for name, pipe in named_pipelines.items():
         fitted = pipe.fit(X, y)
-        artifact = {'pipeline': fitted, 'feature_columns': list(X.columns), 'model_name': name}
+        artifact = {'pipeline': fitted, 'feature_columns': list(X.columns), 'model_name': name, 'environment': _capture_environment()}
         path = f'models/{name}.pkl'
         joblib.dump(artifact, path)
         saved_models.append(path)
@@ -258,7 +259,7 @@ def train(df):
             month_saved = []
             for name, pipe in named_pipelines.items():
                 fitted = pipe.fit(X_m, y_m)
-                artifact = {'pipeline': fitted, 'feature_columns': list(X_m.columns), 'model_name': name}
+                artifact = {'pipeline': fitted, 'feature_columns': list(X_m.columns), 'model_name': name, 'environment': _capture_environment()}
                 path = f'models/month_{name}.pkl'
                 joblib.dump(artifact, path)
                 month_saved.append(path)
@@ -269,7 +270,7 @@ def train(df):
             month_means = {'ridge': np.mean(month_ridge_res['test_r2']), 'random_forest': np.mean(month_rf_res['test_r2']), 'xgboost': np.mean(month_xgb_res['test_r2'])}
             month_best = max(month_means.keys(), key=lambda k: month_means[k])
             # save month best model wrapper
-            joblib.dump({'pipeline': {'model': month_best}, 'feature_columns': list(X_m.columns), 'model_name': month_best}, 'models/month_best_model.pkl')
+            joblib.dump({'pipeline': {'model': month_best}, 'feature_columns': list(X_m.columns), 'model_name': month_best, 'environment': _capture_environment()}, 'models/month_best_model.pkl')
             # compute simple fold metrics for month
             def fold_metrics_month(pipeline):
                 rmses = []
