@@ -344,6 +344,8 @@ def _build_dashboard_data():
 def _build_analysis_data():
     """Compute correlation matrix, per-indicator time series, and histograms."""
     df = pd.read_csv(DATA_PATH)
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
 
     corr_cols = {
         COLUMN_MAP['cpi']: 'CPI',
@@ -848,99 +850,7 @@ def api_env_status():
     })
 
 
-# ---------------------------------------------------------------------------
-# Legacy routes — kept for backward compatibility
-# ---------------------------------------------------------------------------
-
-@app.route('/home')
-def home():
-    return redirect(url_for('cockpit'))
-
-
-@app.route('/dashboard')
-def dashboard():
-    data = _build_dashboard_data()
-    return render_template('dashboard.html', **data)
-
-
-@app.route('/analysis')
-def analysis():
-    data = _build_analysis_data()
-    return render_template('analysis_page.html', **data)
-
-
-@app.route('/models')
-def models():
-    data = _build_models_data()
-    return render_template('models_page.html', **data)
-
-
-@app.route('/predict', methods=['GET', 'POST'])
-def predict():
-    default_values = {
-        'wpi_index': 136.30,
-        'interest_rate': 6.5,
-        'usd_inr': 83.42,
-        'brent_crude': 80.92,
-        'gdp_proxy': 3500.0
-    }
-
-    if request.method == 'POST':
-        result = _run_prediction(request.form.to_dict())
-        return render_template('predict_page.html',
-                               current_values=result['current_values'],
-                               scenario_date=request.form.get('scenario_date', ''),
-                               prediction=result['prediction'],
-                               display_prediction=result['display_prediction'],
-                               interpretation_text=result['interpretation_text'],
-                               interpretation_color=result['interpretation_color'],
-                               model_used=result['model_used'],
-                               model_r2=result['model_r2'],
-                               debug_info='')
-    else:
-        return render_template('predict_page.html',
-                               current_values=default_values,
-                               scenario_date='',
-                               prediction=None,
-                               display_prediction=None,
-                               interpretation_text='',
-                               interpretation_color='border-l-primary',
-                               model_used=MODEL_NAME,
-                               model_r2=float(MODEL_R2) if MODEL_R2 is not None else 0.0,
-                               debug_info='')
-
-
-@app.route('/forecast')
-def forecast():
-    try:
-        data = _build_forecast_data()
-        return render_template('forecast_page.html', **data)
-    except Exception as e:
-        traceback.print_exc()
-        return f"<h1 style='color:red; font-family:sans-serif;'>Error: {str(e)}</h1>"
-
-
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-
-# Alias routes (backward compatibility)
-@app.route('/analysis-ui')
-def analysis_ui():
-    return analysis()
-
-@app.route('/models-ui')
-def models_ui():
-    return models()
-
-@app.route('/predict-ui', methods=['GET', 'POST'])
-def predict_ui():
-    return predict()
-
-@app.route('/forecast-ui')
-def forecast_ui():
-    return forecast()
+# Legacy routes removed because UI migrated to cockpit.html SPA
 
 
 if __name__ == '__main__':
