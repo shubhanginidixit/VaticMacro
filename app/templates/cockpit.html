@@ -356,9 +356,9 @@ function changeColor(val) {
 }
 
 function inflationZoneColor(val) {
-  if (val < 4) return 'var(--accent-green)';
-  if (val <= 6) return 'var(--accent-amber)';
-  return 'var(--accent-red)';
+  if (val < 4) return '#4edea3';
+  if (val <= 6) return '#fbbf24';
+  return '#ff6b6b';
 }
 
 
@@ -475,7 +475,7 @@ async function loadCommandCenter(container) {
         datasets: [{
           label: 'YoY Inflation %',
           data: d.inflation_history.values,
-          borderColor: 'var(--accent-blue)',
+          borderColor: '#6b9aff',
           borderWidth: 2,
           pointRadius: 4,
           pointBackgroundColor: pointColors,
