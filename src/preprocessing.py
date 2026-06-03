@@ -5,13 +5,13 @@ def load_and_clean_data(path, start_date='2000-01-01', end_date='2030-12-31'):
     """
     Load and clean data from CSV files with various formats.
     Handles multiple column naming conventions and date formats.
-    Filters data to specified date range.
+    Filters data to specified date range. Removes negative values for economic indicators.
     """
     df = pd.read_csv(path)
-    
+
     # Get the filename for context
     filename = os.path.basename(path)
-    
+
     # Detect and standardize date column
     date_col = None
     if 'observation_date' in df.columns:
@@ -33,93 +33,104 @@ def load_and_clean_data(path, start_date='2000-01-01', end_date='2030-12-31'):
             date_col = date_candidates[0]
         else:
             raise ValueError(f"No date column found in {filename}. Columns: {list(df.columns)}")
-    
+
     # Rename date column to standard name if needed
     if date_col and date_col != 'observation_date':
         df = df.rename(columns={date_col: 'observation_date'})
-    
+
     # Convert Date to datetime
     df['observation_date'] = pd.to_datetime(df['observation_date'], errors='coerce')
     df = df.dropna(subset=['observation_date'])
-    
+
     # Filter to date range
     start = pd.to_datetime(start_date)
     end = pd.to_datetime(end_date)
     df = df[(df['observation_date'] >= start) & (df['observation_date'] <= end)]
-    
+
     # Sort by date
     df = df.sort_values('observation_date')
-    
+
     # Handle missing values - forward fill then backward fill
     numeric_cols = df.select_dtypes(include=['number']).columns
     df[numeric_cols] = df[numeric_cols].ffill().bfill()
-    
+
+    # Replace negative values with NaN, then forward/backward fill for economic indicators
+    # (negative values in most economic indices are data errors or not meaningful)
+    df[numeric_cols] = df[numeric_cols].mask(df[numeric_cols] < 0, float('nan'))
+    df[numeric_cols] = df[numeric_cols].ffill().bfill()
+
     return df
 
 
 def _handle_pivot_format(df, filename, start_date='2000-01-01', end_date='2030-12-31'):
     """
     Handle pivot-formatted data (like India basket crude oil).
-    Converts from wide format to long format.
+    Converts from wide format to long format. Removes negative values.
     """
     # Melt the dataframe
     melted = df.melt(id_vars=['Year/Month'], var_name='Year', value_name='value')
     melted['observation_date'] = pd.to_datetime(melted['Year/Month'] + ' ' + melted['Year'], errors='coerce')
-    
+
     # Drop rows with invalid dates
     melted = melted.dropna(subset=['observation_date'])
     melted = melted[['observation_date', 'value']].copy()
     melted = melted.rename(columns={'value': filename.replace('.csv', '')})
-    
+
+    # Remove negative values
+    melted[melted.columns[-1]] = melted[melted.columns[-1]].mask(melted[melted.columns[-1]] < 0, float('nan'))
+
     # Filter to date range
     start = pd.to_datetime(start_date)
     end = pd.to_datetime(end_date)
     melted = melted[(melted['observation_date'] >= start) & (melted['observation_date'] <= end)]
-    
+
     # Sort by date
     melted = melted.sort_values('observation_date')
     melted = melted.ffill().bfill()
-    
+
     return melted
 
 
 def _handle_year_columns_format(df, filename, start_date='2000-01-01', end_date='2030-12-31'):
     """
     Handle data with years as columns (like Unemployment Rate Annually).
-    Converts from wide format to long format.
+    Converts from wide format to long format. Removes negative values.
     """
     # Get only numeric columns (years)
     year_cols = [col for col in df.columns if col.isdigit()]
-    
+
     # Find the country/indicator identifier column
     id_col = None
     for col in df.columns:
         if not col.isdigit() and df[col].notna().any():
             id_col = col
             break
-    
+
     if id_col is None:
         id_col = df.columns[0]
-    
+
     # Melt the dataframe
     melted = df.melt(id_vars=[id_col], value_vars=year_cols, var_name='Year', value_name='value')
-    
+
     # Create observation_date
     melted['observation_date'] = pd.to_datetime(melted['Year'] + '-01-01')
-    
+
     # Keep only observation_date and value columns
     melted = melted[['observation_date', 'value']].copy()
     melted = melted.rename(columns={'value': filename.replace('.csv', '')})
-    
+
+    # Remove negative values
+    melted[melted.columns[-1]] = melted[melted.columns[-1]].mask(melted[melted.columns[-1]] < 0, float('nan'))
+
     # Drop NaN values
     melted = melted.dropna(subset=['observation_date', melted.columns[1]])
-    
+
     # Filter to date range
     start = pd.to_datetime(start_date)
     end = pd.to_datetime(end_date)
     melted = melted[(melted['observation_date'] >= start) & (melted['observation_date'] <= end)]
-    
+
     # Sort by date
     melted = melted.sort_values('observation_date')
-    
+
     return melted

@@ -1,0 +1,21 @@
+Loading data...
+Parsed Date column as datetime
+Renamed INDCPIALLMINMEI -> CPI
+Starting training...
+Training on 2000-01-01 through 2022 (6134 rows)
+Full dataset has 7023 rows
+
+Evaluating RidgeCV via TimeSeriesSplit...
+Ridge R2 per-fold: [-11.29349586  -0.11365187 -25.19187972  -6.40891997 -16.37648059]
+Ridge MAE per-fold: [4.39818039 2.40525381 9.98346689 3.59744211 4.6752753 ]
+
+Evaluating RandomForest via TimeSeriesSplit...
+RF R2 per-fold: [-2.54687737 -1.64660382 -0.70326246 -2.12153323 -2.34343   ]
+RF MAE per-fold: [1.85394399 3.60367664 2.19424039 2.25609757 2.03090494]
+
+Evaluating XGBoost via TimeSeriesSplit...
+XGB R2 per-fold: [-4.57370049 -2.42803532 -0.87588858 -1.06479939 -0.48695983]
+XGB MAE per-fold: [2.37921138 4.15027076 2.16053737 1.7639479  1.17042678]
+
+Chosen model: RandomForest (mean R2: -1.8723)
+Training complete.

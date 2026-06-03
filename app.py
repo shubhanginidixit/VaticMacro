@@ -54,7 +54,8 @@ def _extract_model_r2(metrics_data, model_name):
             continue
         key_nm = _norm(key)
         val_name = _norm(val.get("name", ""))
-        if nm and (nm == key_nm or nm == val_name or nm in key_nm or key_nm in nm or nm in val_name or val_name in nm):
+        # Match: must have exact key match, or model_name contains key, or key contains model_name
+        if nm == key_nm or (nm and nm in key_nm) or (key_nm and key_nm in nm):
             return _mean_or_value(val.get("r2") or val.get("r2_mean"))
     return None
 

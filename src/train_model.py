@@ -13,8 +13,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
+from .feature_engineering import create_features
 
-# Clip wrapper to enforce RBI range and avoid negative predictions
+
+# Clip wrapper to handle negative predictions safely
 class ClipRegressor(BaseEstimator, RegressorMixin):
     def __init__(self, estimator=None, min_value=None, max_value=None):
         self.estimator = estimator
@@ -29,29 +31,29 @@ class ClipRegressor(BaseEstimator, RegressorMixin):
     def predict(self, X):
         preds = self.estimator_.predict(X)
         preds = np.array(preds, dtype=float)
-        if self.min_value is not None:
+        # Only clip negative values to 0, don't enforce strict upper bound
+        # This preserves model variance and improves R2
+        if self.min_value is not None and self.min_value >= 0:
             preds = np.maximum(preds, self.min_value)
-        if self.max_value is not None:
-            preds = np.minimum(preds, self.max_value)
         return preds
 
 
 def train(df):
     """
-    Train Ridge Regression with K-fold cross-validation on 2000-2022 data.
-    Uses percentage-change features for generalization across any year.
-
-    Ridge regression with K-fold CV ensures:
-    - Model generalizes to unseen years (2026, 2027, etc.)
-    - No overfitting to specific value ranges
-    - Robust performance with percentage-change features
+    Train model using engineered features (percentage changes, momentum indicators).
+    Predicts Year-over-Year (YoY) inflation (%) using K-fold cross-validation on 2000-2022 data.
 
     Args:
-        df: DataFrame with features and 'CPI' target column
+        df: DataFrame with raw economic indicators and CPI column
 
     Returns:
-        The best trained model (Pipeline with scaler + Ridge)
+        The best trained model (Pipeline with scaler + regressor)
     """
+    # Create engineered features from raw data
+    print('Creating engineered features...')
+    df = create_features(df)
+    print(f'Features created. DataFrame shape: {df.shape}')
+
     # **IMPORTANT**: Prefer a recent training window to reduce regime-shift damage
     # We train the model to predict Year-over-Year (YoY) inflation (%) rather than raw CPI.
     # Use merge_asof to find the nearest year-ago CPI for each training date.
@@ -78,34 +80,43 @@ def train(df):
     training_df['inflation_yoy'] = ((training_df['CPI'] - training_df['CPI_base']) / training_df['CPI_base']) * 100
     training_df = training_df.dropna(subset=['inflation_yoy']).reset_index(drop=True)
 
-    # Prepare features and target: drop Date, CPI and CPI_base; target is YoY inflation
+    # Prepare features and target: drop Date, CPI, and CPI_base; target is YoY inflation
+    # Use all engineered features (percentage changes, lags, ratios)
     X = training_df.drop(['Date', 'CPI', 'CPI_base', 'inflation_yoy'], axis=1)
     y = training_df['inflation_yoy']
 
-    # TimeSeriesSplit cross-validation and RidgeCV with RobustScaler
+    # Remove any rows with NaN that may have slipped through
+    valid_idx = ~(X.isna().any(axis=1) | y.isna())
+    X = X[valid_idx].reset_index(drop=True)
+    y = y[valid_idx].reset_index(drop=True)
+
+    print(f'Training set shape: X={X.shape}, y={y.shape}')
+    print(f'Y statistics: mean={y.mean():.2f}, std={y.std():.2f}, min={y.min():.2f}, max={y.max():.2f}')
+
+    # Use TimeSeriesSplit for proper time series evaluation
     tscv = TimeSeriesSplit(n_splits=5)
 
-    ridge_alphas = [0.01, 0.1, 1.0, 3.0, 10.0]
+    ridge_alphas = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]  # Expand alpha range
 
     # Try both RidgeCV and RandomForest (choose the better based on CV)
-    # RBI target range (default 2-6%). Can be adjusted if needed.
-    rbi_min, rbi_max = 2.0, 6.0
+    # Only enforce minimum to prevent negative inflation predictions
+    rbi_min = 0.0  # Don't allow negative inflation rates
 
     # ClipRegressor is defined at module scope for pickling
 
     ridge_pipeline = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', ClipRegressor(RidgeCV(alphas=ridge_alphas, cv=tscv), min_value=rbi_min, max_value=rbi_max))
+        ('model', ClipRegressor(RidgeCV(alphas=ridge_alphas, cv=tscv), min_value=rbi_min, max_value=None))
     ])
 
     rf_pipeline = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', ClipRegressor(RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=1), min_value=rbi_min, max_value=rbi_max))
+        ('model', ClipRegressor(RandomForestRegressor(n_estimators=200, max_depth=15, min_samples_split=5, min_samples_leaf=2, random_state=42, n_jobs=-1), min_value=rbi_min, max_value=None))
     ])
 
     xgb_pipeline = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', ClipRegressor(XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, random_state=42, verbosity=0), min_value=rbi_min, max_value=rbi_max))
+        ('model', ClipRegressor(XGBRegressor(n_estimators=300, learning_rate=0.01, max_depth=6, min_child_weight=1, subsample=0.8, colsample_bytree=0.8, random_state=42, verbosity=0), min_value=rbi_min, max_value=None))
     ])
 
     scoring = {'r2': 'r2', 'mae': 'neg_mean_absolute_error'}
@@ -275,7 +286,6 @@ def train(df):
                 json.dump({
                     'best_model': month_best,
                     'rbi_min': rbi_min,
-                    'rbi_max': rbi_max,
                     'ridge': {'r2': [float(x) for x in mr_r2], 'mae': [float(x) for x in mr_mae], 'rmse': [float(x) for x in mr_rmse]},
                     'random_forest': {'r2': [float(x) for x in rf_r2_m], 'mae': [float(x) for x in rf_mae_m], 'rmse': [float(x) for x in rf_rmse_m]},
                     'xgboost': {'r2': [float(x) for x in xgb_r2_m], 'mae': [float(x) for x in xgb_mae_m], 'rmse': [float(x) for x in xgb_rmse_m]},
