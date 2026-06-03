@@ -38,6 +38,20 @@ class ClipRegressor(BaseEstimator, RegressorMixin):
         return preds
 
 
+def _capture_environment():
+    """Snapshot current library versions for cross-machine reproducibility checks."""
+    import sklearn
+    import xgboost as xgb
+    return {
+        "scikit-learn": sklearn.__version__,
+        "xgboost": xgb.__version__,
+        "pandas": pd.__version__,
+        "numpy": np.__version__,
+        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "platform": platform.platform(),
+    }
+
+
 def train(df):
     """
     Train Ridge Regression with K-fold cross-validation on 2000-2022 data.
