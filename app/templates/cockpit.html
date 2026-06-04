@@ -83,17 +83,52 @@
   }
 
   /* Input styling */
-  .scenario-input {
-    background: var(--bg-base);
-    border: 1px solid var(--border-subtle);
+  /* Input styling */
+.scenario-input {
+    background: #111820 !important;
+    border: 1px solid #2e3744 !important;
     border-radius: 8px;
     padding: 10px 14px;
-    color: var(--text-primary);
+    color: #ffffff !important;
     font-size: 14px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-weight: 600;
+    opacity: 1 !important;
     text-align: right;
     width: 110px;
-  }
+    caret-color: #ffffff !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scenario-input:focus {
+    outline: none;
+    color: #ffffff !important;
+    background: #111820 !important;
+    border-color: #6b9aff !important;
+    box-shadow: 0 0 0 3px rgba(107, 154, 255, 0.15);
+}
+
+input[type="number"],
+input[type="date"] {
+    color: #ffffff !important;
+    background: #111820 !important;
+    caret-color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    opacity: 1;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+input::placeholder {
+    color: #a0a0a0 !important;
+    opacity: 1;
+}
   .scenario-input:focus {
     outline: none;
     border-color: var(--accent-blue);
