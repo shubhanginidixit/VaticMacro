@@ -46,6 +46,12 @@ def merge_all():
     merged_df = merged_df.ffill()  # Forward fill
     merged_df = merged_df.bfill()  # Backward fill for remaining NaNs
     
+    # Resample to monthly frequency (Month End) to reduce noise
+    merged_df['Date'] = pd.to_datetime(merged_df['Date'])
+    merged_df = merged_df.set_index('Date').resample('ME').last().reset_index()
+    # Forward fill one last time in case some months had entirely missing data prior to resampling
+    merged_df = merged_df.ffill()
+    
     # Save to CSV
     merged_df.to_csv("data/inflation_dataset.csv", index=False)
 

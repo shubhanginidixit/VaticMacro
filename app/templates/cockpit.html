@@ -391,9 +391,11 @@ function changeColor(val) {
 }
 
 function inflationZoneColor(val) {
-  if (val < 4) return '#4edea3';
-  if (val <= 6) return '#fbbf24';
-  return '#ff6b6b';
+  if (val < 0) return '#8b95a5';   // deflation — grey
+  if (val < 2) return '#4d8eff';   // below RBI band — blue
+  if (val <= 6) return '#4edea3';  // within band — green
+  if (val <= 8) return '#fbbf24';  // above target — amber
+  return '#ff6b6b';                // high inflation — red
 }
 
 
@@ -735,7 +737,7 @@ async function loadPredictiveSandbox(container) {
             </div>
             <div class="mt-4 pt-3 flex justify-between text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-muted);">
               <span>Model: ${data.model_name}</span>
-              <span>R² = <span style="color: ${data.model_r2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; font-weight: 600;">${data.model_r2.toFixed(4)}</span></span>
+              <span>Holdout R² = <span style="color: ${data.model_r2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; font-weight: 600;">${data.model_r2.toFixed(4)}</span></span>
             </div>
           </div>
 
@@ -1066,7 +1068,7 @@ function loadAbout(container) {
             <span class="material-symbols-outlined text-[20px]" style="color: var(--accent-amber);">hub</span>
             <h2 class="font-semibold">Model Registry</h2>
           </div>
-          <p class="text-sm" style="color: var(--text-secondary);">Compare Ridge, RandomForest, and XGBoost performance with holdout metrics.</p>
+          <p class="text-sm" style="color: var(--text-secondary);">Compare Ridge, RandomForest, XGBoost, and LightGBM performance with holdout metrics.</p>
         </div>
       </div>
 
@@ -1079,7 +1081,7 @@ function loadAbout(container) {
         </p>
         <div class="mt-4 pt-4 flex gap-6 text-xs" style="border-top: 1px solid var(--border-subtle); color: var(--text-muted);">
           <span>Python + Flask</span>
-          <span>Scikit-learn / XGBoost</span>
+          <span>Scikit-learn / XGBoost / LightGBM</span>
           <span>Chart.js</span>
           <span>IEEE 2025</span>
         </div>

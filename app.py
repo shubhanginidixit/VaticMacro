@@ -189,6 +189,22 @@ except Exception as e:
     print(f"Warning: Could not load model at {MODEL_PATH}. Error: {repr(e)}")
     best_model = None
 
+HOLDOUT_R2 = None
+
+holdout_csv_path = Path(BASE_DIR) / 'models' / 'holdout.csv'
+if holdout_csv_path.exists() and best_model is not None:
+    try:
+        hold_df = pd.read_csv(holdout_csv_path)
+        if 'target_future_inflation' in hold_df.columns and 'Predicted_Inflation' in hold_df.columns:
+            from sklearn.metrics import r2_score as _r2
+            HOLDOUT_R2 = float(_r2(
+                hold_df['target_future_inflation'].dropna(),
+                hold_df['Predicted_Inflation'].dropna()
+            ))
+            print(f'[Startup] Holdout R2: {HOLDOUT_R2:.4f}')
+    except Exception as e:
+        print(f'[Startup] Could not compute holdout R2: {e}')
+
 # Load metrics.json
 if Path(METRICS_PATH).exists():
     try:
@@ -265,6 +281,8 @@ def _build_dashboard_data():
     df = pd.read_csv(DATA_PATH)
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values('Date').reset_index(drop=True)
+    # Removed hardcoded 2025 cutoff. The dashboard should show ALL available data.
+    df = df.copy().reset_index(drop=True)
 
     latest = df.iloc[-1]
 
@@ -331,7 +349,7 @@ def _build_dashboard_data():
         'low_inflation': low_inflation,
         'low_date': low_date,
         'trend': 'Rising' if inflation_change > 0 else 'Declining',
-        'num_features': 8,
+        'num_features': len(COLUMN_MAP),
         'num_observations': len(df),
         'date_range': f"{df['Date'].dt.year.min()} - {df['Date'].dt.year.max()}",
         'inflation_history': {
@@ -368,11 +386,35 @@ def _build_analysis_data():
         "Brent Crude has immediate transmission into WPI."
     ]
 
-    stationarity_tests = [
-        {'name': 'CPI', 'adf_stat': -1.2, 'p_value': 0.65, 'stationary': False},
-        {'name': 'CPI (Differenced)', 'adf_stat': -4.5, 'p_value': 0.001, 'stationary': True},
-        {'name': 'Brent Crude', 'adf_stat': -2.1, 'p_value': 0.25, 'stationary': False}
-    ]
+    try:
+        from statsmodels.tsa.stattools import adfuller
+        stationarity_tests = []
+        test_series = {'CPI': COLUMN_MAP['cpi'], 'WPI': COLUMN_MAP['wpi'], 'Brent Crude': COLUMN_MAP['brent_crude']}
+        for label, col_name in test_series.items():
+            if col_name in df.columns:
+                series = df[col_name].dropna()
+                if len(series) > 20:
+                    result = adfuller(series, maxlag=12, autolag='AIC')
+                    stationarity_tests.append({
+                        'name': label,
+                        'adf_stat': round(result[0], 2),
+                        'p_value': round(result[1], 4),
+                        'stationary': result[1] < 0.05
+                    })
+                    # Also test differenced
+                    diff_result = adfuller(series.diff().dropna(), maxlag=12, autolag='AIC')
+                    stationarity_tests.append({
+                        'name': f'{label} (Differenced)',
+                        'adf_stat': round(diff_result[0], 2),
+                        'p_value': round(diff_result[1], 4),
+                        'stationary': diff_result[1] < 0.05
+                    })
+    except ImportError:
+        stationarity_tests = [
+            {'name': 'CPI', 'adf_stat': -1.2, 'p_value': 0.65, 'stationary': False},
+            {'name': 'CPI (Differenced)', 'adf_stat': -4.5, 'p_value': 0.001, 'stationary': True},
+            {'name': 'Brent Crude', 'adf_stat': -2.1, 'p_value': 0.25, 'stationary': False}
+        ]
 
     # Per-indicator time series and histograms
     df_copy = df.copy()
@@ -411,7 +453,7 @@ def _build_models_data():
         except Exception as e:
             print(f"Error loading metrics: {e}")
 
-    best_model_name = metrics_data.get("best_model", "Unknown")
+    best_model_name = metrics_data.get("best_model", MODEL_NAME)
     best_model_key = str(best_model_name).lower()
 
     try:
@@ -457,39 +499,35 @@ def _build_models_data():
                 "rmse": rmse_mean
             })
 
-    # Prefer Ridge for display
-    for mm in models_metrics:
-        if 'ridge' in str(mm.get('name', '')).lower():
-            best_model_name = mm.get('name')
-            best_model_key = str(mm.get('key') or best_model_name).lower()
-            break
-
     best_model_r2 = float(MODEL_R2) if MODEL_R2 is not None else 0.0
     best_model_mae = 0
     best_model_rmse = 0
 
     for m in models_metrics:
-        try:
-            r2_val = float(m.get("r2_mean", 0))
-        except Exception:
-            r2_val = 0.0
-        m["r2_mean"] = r2_val
-        m_key = m.get("key") or str(m.get("name", "")).lower()
-        if (best_model_r2 == 0) and (_norm_key(m_key) == _norm_key(best_model_key) or _norm_key(m.get("name", "")) == _norm_key(best_model_key)):
-            best_model_r2 = m.get("r2_mean", 0)
-            best_model_mae = m.get("mae", 0)
-            best_model_rmse = m.get("rmse", 0)
+        if _norm_key(m.get('name', '')) == _norm_key(best_model_name):
+            best_model_r2 = m.get('r2_mean', 0)
+            best_model_mae = m.get('mae', 0)
+            best_model_rmse = m.get('rmse', 0)
             break
 
     # Extract real feature importances from the loaded model
     feature_importances = _extract_feature_importances()
 
-    # Prediction chart data (mock — retained from original)
-    prediction_chart_data = {
-        "dates": ["Jan 2024", "Feb 2024", "Mar 2024", "Apr 2024", "May 2024", "Jun 2024"],
-        "actual": [5.1, 5.09, 4.85, 4.83, 4.75, 5.08],
-        "best_model_predictions": [5.15, 5.0, 4.9, 4.8, 4.85, 5.1]
-    }
+    prediction_chart_data = {"dates": [], "actual": [], "best_model_predictions": []}
+    holdout_csv = Path(BASE_DIR) / 'models' / 'holdout.csv'
+    if holdout_csv.exists():
+        try:
+            hold = pd.read_csv(holdout_csv)
+            hold['Date'] = pd.to_datetime(hold['Date'])
+            hold = hold.sort_values('Date').reset_index(drop=True)
+            if 'target_future_inflation' in hold.columns and 'Predicted_Inflation' in hold.columns:
+                prediction_chart_data = {
+                    "dates": hold['Date'].dt.strftime('%b %Y').tolist(),
+                    "actual": hold['target_future_inflation'].round(2).tolist(),
+                    "best_model_predictions": hold['Predicted_Inflation'].round(2).tolist()
+                }
+        except Exception as e:
+            print(f"Could not load holdout for chart: {e}")
 
     return {
         'best_model_name': best_model_name,
@@ -572,6 +610,7 @@ def _build_forecast_data():
     df = pd.read_csv(DATA_PATH)
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values('Date').reset_index(drop=True)
+    df = df.copy().reset_index(drop=True)
 
     latest_date = df['Date'].max()
     one_year_ago = latest_date - pd.Timedelta(days=365)
@@ -606,24 +645,40 @@ def _build_forecast_data():
         'current_rate': round(latest[COLUMN_MAP['interest_rate']], 2),
         'current_inflation': round(current_inflation, 2),
         'latest_date': latest_date.strftime('%B %d, %Y'),
-        'forecast_model': 'ARIMA',
-        'model_order': '(2, 1, 2)',
+        'forecast_model': MODEL_NAME if MODEL_NAME else 'ML Ensemble',
+        'model_order': f'Holdout R²={HOLDOUT_R2:.4f}' if HOLDOUT_R2 is not None else 'N/A',
         'data_points': len(df)
     }
 
+
+def _get_dynamic_defaults():
+    try:
+        if os.path.exists(DATA_PATH):
+            df = pd.read_csv(DATA_PATH)
+            latest = df.iloc[-1]
+            return {
+                'wpi_index': float(latest.get(COLUMN_MAP['wpi'], 136.30)),
+                'interest_rate': float(latest.get(COLUMN_MAP['interest_rate'], 6.5)),
+                'usd_inr': float(latest.get(COLUMN_MAP['usd_inr'], 83.42)),
+                'brent_crude': float(latest.get(COLUMN_MAP['brent_crude'], 80.92)),
+                'gdp_proxy': float(latest.get(COLUMN_MAP['gdp_proxy'], 3500.0))
+            }
+    except Exception:
+        pass
+    return {
+        'wpi_index': 165.50,
+        'interest_rate': 5.25,
+        'usd_inr': 95.40,
+        'brent_crude': 107.00,
+        'gdp_proxy': 3909.89
+    }
 
 def _run_prediction(form_data):
     """Execute a prediction given form input data. Returns a result dict.
 
     This is the core prediction logic extracted from the original /predict POST handler.
     """
-    default_values = {
-        'wpi_index': 136.30,
-        'interest_rate': 6.5,
-        'usd_inr': 83.42,
-        'brent_crude': 80.92,
-        'gdp_proxy': 3500.0
-    }
+    default_values = _get_dynamic_defaults()
 
     val_wpi = float(form_data.get('wpi_index', default_values['wpi_index']))
     val_ir = float(form_data.get('interest_rate', default_values['interest_rate']))
@@ -783,7 +838,7 @@ def _run_prediction(form_data):
         'interpretation_text': interpretation_text,
         'interpretation_color': interpretation_color,
         'model_used': MODEL_NAME,
-        'model_r2': display_model_r2
+        'model_r2': float(HOLDOUT_R2) if HOLDOUT_R2 is not None else (float(display_model_r2) if display_model_r2 else 0.0)
     }
 
 
@@ -821,17 +876,12 @@ def api_predictive_sandbox():
 
     # GET — return forecast data and default input values
     forecast = _build_forecast_data()
+    display_r2 = HOLDOUT_R2 if HOLDOUT_R2 is not None else (MODEL_R2 if MODEL_R2 is not None else 0.0)
     return jsonify({
         'forecast': forecast,
-        'defaults': {
-            'wpi_index': 136.30,
-            'interest_rate': 6.5,
-            'usd_inr': 83.42,
-            'brent_crude': 80.92,
-            'gdp_proxy': 3500.0
-        },
+        'defaults': _get_dynamic_defaults(),
         'model_name': MODEL_NAME,
-        'model_r2': float(MODEL_R2) if MODEL_R2 is not None else 0.0
+        'model_r2': display_r2
     })
 
 

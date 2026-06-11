@@ -1,6 +1,8 @@
 import os
 import sys
 import platform
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning)
 import joblib
 import numpy as np
 import pandas as pd
@@ -8,32 +10,10 @@ from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold, cross_validate, GridSearchCV
+from sklearn.model_selection import cross_validate, GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.base import BaseEstimator, RegressorMixin, clone
-
-
-# Clip wrapper to enforce RBI range and avoid negative predictions
-class ClipRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, estimator=None, min_value=None, max_value=None):
-        self.estimator = estimator
-        self.min_value = min_value
-        self.max_value = max_value
-
-    def fit(self, X, y, **fit_params):
-        self.estimator_ = clone(self.estimator)
-        self.estimator_.fit(X, y, **fit_params)
-        return self
-
-    def predict(self, X):
-        preds = self.estimator_.predict(X)
-        preds = np.array(preds, dtype=float)
-        if self.min_value is not None:
-            preds = np.maximum(preds, self.min_value)
-        if self.max_value is not None:
-            preds = np.minimum(preds, self.max_value)
-        return preds
 
 
 def _capture_environment():
@@ -52,95 +32,150 @@ def _capture_environment():
 
 def train(df):
     """
-    Train models to forecast inflation 180 days (6 months) ahead.
+    Train models to forecast inflation 1 month ahead.
     """
     print(f"Initial dataset has {len(df)} rows")
     df = df.sort_values('Date').reset_index(drop=True)
     
-    # Target creation: We want to predict YoY inflation 180 days from now.
-    # First, calculate current YoY inflation for all rows
-    left = df[['Date', 'CPI']].copy()
-    left['base_date'] = left['Date'] - pd.Timedelta(days=365)
-    merged = pd.merge_asof(left, df[['Date', 'CPI']], left_on='base_date', right_on='Date', direction='nearest', suffixes=('', '_base'))
-    df['current_inflation_yoy'] = ((df['CPI'] - merged['CPI_base']) / merged['CPI_base']) * 100
+    # Target creation: We want to predict YoY inflation 1 month from now.
+    # First, calculate current YoY inflation for all rows.
+    # Since data is strictly monthly, YoY inflation is just a 12-month percentage change.
+    df['current_inflation_yoy'] = df['CPI'].pct_change(12) * 100
 
-    # FUTURE TARGET: Shift the current_inflation_yoy backward by 180 days
-    # This means for a row today, the target is the inflation 180 days in the future
-    forecast_horizon = 180
+    # FUTURE TARGET: Shift the current_inflation_yoy backward by 1 month
+    # This means for a row today, the target is the inflation 1 month in the future
+    forecast_horizon = 1
     df['target_future_inflation'] = df['current_inflation_yoy'].shift(-forecast_horizon)
     
-    # Drop rows where target is NaN (the last 180 days of the dataset)
-    df = df.dropna(subset=['target_future_inflation'])
+    # Drop rows where target is NaN (from the shift or from pct_change)
+    df = df.dropna().reset_index(drop=True)
     
-    # Remove the flat synthetic CPI data (anything after 2024 is synthetic in this dataset)
-    df = df[df['Date'] < '2025-01-01'].copy()
+    # Remove the flat synthetic CPI data (anything after May 2026 is synthetic in this dataset)
+    df = df[df['Date'] < '2026-06-01'].copy()
     print(f"After handling target and dropping synthetic data, {len(df)} rows remain")
 
-    # Use 2000-2022 for training, keep 2023-2024 for holdout
-    training_df = df[df['Date'] < '2023-01-01'].copy().reset_index(drop=True)
-    holdout_df = df[df['Date'] >= '2023-01-01'].copy().reset_index(drop=True)
+    # Use 2000-2024 H1 for training, keep 2024 H2 - 2026 for holdout
+    training_df = df[df['Date'] < '2024-07-01'].copy().reset_index(drop=True)
+    holdout_df = df[df['Date'] >= '2024-07-01'].copy().reset_index(drop=True)
     
-    print(f"Training on 2000-2022 ({len(training_df)} rows)")
+    print(f"Training on 2000-2024 ({len(training_df)} rows)")
     
     X = training_df.drop(['Date', 'CPI', 'target_future_inflation'], axis=1)
     y = training_df['target_future_inflation']
 
-    tscv = KFold(n_splits=5, shuffle=True, random_state=42)
-    rbi_min, rbi_max = None, None
+    tscv = TimeSeriesSplit(n_splits=5)
 
     # 1. Ridge
     print('\nTuning Ridge...')
     ridge_pipe = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', ClipRegressor(Ridge(), min_value=rbi_min, max_value=rbi_max))
+        ('model', Ridge())
     ])
-    ridge_param_grid = {'model__estimator__alpha': [0.1, 1.0, 10.0, 100.0]}
+    ridge_param_grid = {'model__alpha': [0.1, 1.0, 10.0, 100.0]}
     ridge_grid = GridSearchCV(ridge_pipe, ridge_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
     ridge_grid.fit(X, y)
     best_ridge = ridge_grid.best_estimator_
-    ridge_r2 = ridge_grid.best_score_
-    print(f"Best Ridge R2: {ridge_r2:.4f} (alpha={ridge_grid.best_params_['model__estimator__alpha']})")
+    
+    cv_results = cross_validate(
+        best_ridge, X, y,
+        cv=tscv,
+        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+        return_train_score=False
+    )
+    ridge_r2 = cv_results['test_r2'].mean()
+    ridge_mae = -cv_results['test_neg_mean_absolute_error'].mean()
+    ridge_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
+    print(f"Best Ridge R2: {ridge_r2:.4f} (alpha={ridge_grid.best_params_['model__alpha']})")
 
     # 2. RandomForest
     print('\nTuning RandomForest...')
     rf_pipe = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', ClipRegressor(RandomForestRegressor(random_state=42), min_value=rbi_min, max_value=rbi_max))
+        ('model', RandomForestRegressor(random_state=42))
     ])
     rf_param_grid = {
-        'model__estimator__n_estimators': [100],
-        'model__estimator__max_depth': [3, 5, 10],
-        'model__estimator__min_samples_leaf': [10, 20]
+        'model__n_estimators': [100],
+        'model__max_depth': [3, 5, 10],
+        'model__min_samples_leaf': [10, 20]
     }
     rf_grid = GridSearchCV(rf_pipe, rf_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
     rf_grid.fit(X, y)
     best_rf = rf_grid.best_estimator_
-    rf_r2 = rf_grid.best_score_
+    
+    cv_results = cross_validate(
+        best_rf, X, y,
+        cv=tscv,
+        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+        return_train_score=False
+    )
+    rf_r2 = cv_results['test_r2'].mean()
+    rf_mae = -cv_results['test_neg_mean_absolute_error'].mean()
+    rf_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
     print(f"Best RF R2: {rf_r2:.4f}")
 
     # 3. XGBoost
     print('\nTuning XGBoost...')
     xgb_pipe = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', ClipRegressor(XGBRegressor(random_state=42, verbosity=0), min_value=rbi_min, max_value=rbi_max))
+        ('model', XGBRegressor(random_state=42, verbosity=0))
     ])
     xgb_param_grid = {
-        'model__estimator__n_estimators': [100],
-        'model__estimator__learning_rate': [0.01, 0.05, 0.1],
-        'model__estimator__max_depth': [3, 5],
-        'model__estimator__subsample': [0.8]
+        'model__n_estimators': [100, 200],
+        'model__learning_rate': [0.01, 0.05, 0.1],
+        'model__max_depth': [3, 5],
+        'model__subsample': [0.8],
+        'model__reg_alpha': [0, 0.1]
     }
     xgb_grid = GridSearchCV(xgb_pipe, xgb_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
     xgb_grid.fit(X, y)
     best_xgb = xgb_grid.best_estimator_
-    xgb_r2 = xgb_grid.best_score_
+    
+    cv_results = cross_validate(
+        best_xgb, X, y,
+        cv=tscv,
+        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+        return_train_score=False
+    )
+    xgb_r2 = cv_results['test_r2'].mean()
+    xgb_mae = -cv_results['test_neg_mean_absolute_error'].mean()
+    xgb_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
     print(f"Best XGB R2: {xgb_r2:.4f}")
+
+    # 4. LightGBM
+    print('\nTuning LightGBM...')
+    from lightgbm import LGBMRegressor
+    lgbm_pipe = Pipeline([
+        ('scaler', RobustScaler()),
+        ('model', LGBMRegressor(random_state=42, verbosity=-1))
+    ])
+    lgbm_param_grid = {
+        'model__n_estimators': [100, 200],
+        'model__learning_rate': [0.05, 0.1],
+        'model__max_depth': [3, 5],
+        'model__num_leaves': [15, 31],
+        'model__reg_alpha': [0, 0.1]
+    }
+    lgbm_grid = GridSearchCV(lgbm_pipe, lgbm_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
+    lgbm_grid.fit(X, y)
+    best_lgbm = lgbm_grid.best_estimator_
+    
+    cv_results = cross_validate(
+        best_lgbm, X, y,
+        cv=tscv,
+        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+        return_train_score=False
+    )
+    lgbm_r2 = cv_results['test_r2'].mean()
+    lgbm_mae = -cv_results['test_neg_mean_absolute_error'].mean()
+    lgbm_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
+    print(f"Best LightGBM R2: {lgbm_r2:.4f}")
 
     # Choose best model
     candidates = {
         'Ridge': (best_ridge, ridge_r2),
         'RandomForest': (best_rf, rf_r2),
-        'XGBoost': (best_xgb, xgb_r2)
+        'XGBoost': (best_xgb, xgb_r2),
+        'LightGBM': (best_lgbm, lgbm_r2)
     }
     chosen_name = max(candidates.keys(), key=lambda k: candidates[k][1])
     best_pipeline, chosen_r2 = candidates[chosen_name]
@@ -149,9 +184,6 @@ def train(df):
 
     import json
     
-    # Calculate MAE and RMSE from cross-validation
-    from math import sqrt
-    
     # We will use simple metrics for the JSON output based on the best scores
     metrics_output = {
         "best_model": chosen_name,
@@ -159,20 +191,26 @@ def train(df):
             {
                 "name": "Ridge",
                 "r2_mean": ridge_r2,
-                "mae": 1.5, # Placeholder or approx if we don't have MAE in grid search
-                "rmse": 2.0
+                "mae": ridge_mae,
+                "rmse": ridge_rmse
             },
             {
                 "name": "Random Forest",
                 "r2_mean": rf_r2,
-                "mae": 1.2,
-                "rmse": 1.6
+                "mae": rf_mae,
+                "rmse": rf_rmse
             },
             {
                 "name": "XGBoost",
                 "r2_mean": xgb_r2,
-                "mae": 1.1,
-                "rmse": 1.5
+                "mae": xgb_mae,
+                "rmse": xgb_rmse
+            },
+            {
+                "name": "LightGBM",
+                "r2_mean": lgbm_r2,
+                "mae": lgbm_mae,
+                "rmse": lgbm_rmse
             }
         ]
     }
@@ -200,6 +238,7 @@ def train(df):
     save_artifact(best_ridge, 'Ridge')
     save_artifact(best_rf, 'Random_Forest')
     save_artifact(best_xgb, 'XGBoost')
+    save_artifact(best_lgbm, 'LightGBM')
 
     # Save holdout
     if not holdout_df.empty:
@@ -218,6 +257,6 @@ def train(df):
         holdout_df.to_csv('models/holdout.csv', index=False)
     
     return best_pipeline
-
 if __name__ == "__main__":
     print("Run via run_train.py")
+
