@@ -39,6 +39,9 @@ def create_features(df):
         df['inflation_lag_3m'] = cpi_pct.shift(3)
         df['inflation_lag_6m'] = cpi_pct.shift(6)
         df['inflation_lag_12m'] = cpi_pct.shift(12)
+        df['inflation_lag_2m'] = cpi_pct.shift(2)
+        df['inflation_lag_9m'] = cpi_pct.shift(9)
+        df['inflation_acceleration'] = cpi_pct - cpi_pct.shift(1)
 
     # Percentage changes for key indicators (1m and 12m only)
     indicator_cols = [col for col in KEEP_COLUMNS if col in df.columns and col != 'CPI']
@@ -56,6 +59,18 @@ def create_features(df):
     if 'DEXINUS' in df.columns and 'Average of DCOILBRENTEU' in df.columns:
         df['oil_inr_ratio'] = df['Average of DCOILBRENTEU'] / df['DEXINUS']
         df['oil_inr_pct_1m'] = df['oil_inr_ratio'].pct_change(1) * 100
+        # Brent crude volatility: 12m rolling std of monthly pct changes
+        df['brent_vol_12m'] = df['Average of DCOILBRENTEU'].pct_change(1).rolling(12).std() * 100
+        # INR momentum: 3m change in exchange rate
+        df['inr_momentum_3m'] = df['DEXINUS'].diff(3)
+
+    # WPI-CPI spread (divergence between wholesale and consumer prices)
+    if 'WPIATT01INM661N' in df.columns and 'CPI' in df.columns:
+        df['wpi_cpi_spread'] = df['WPIATT01INM661N'] - df['CPI']
+
+    # Interest rate direction: 3m change in policy rate
+    if 'INTDSRINM193N' in df.columns:
+        df['rate_direction_3m'] = df['INTDSRINM193N'].diff(3)
 
     # Industrial Production: z-score (deviation from 24m trend) and 6m smoothed level
     if 'INDPRINTO01GYSAM' in df.columns:
