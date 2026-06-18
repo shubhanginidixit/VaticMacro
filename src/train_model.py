@@ -12,7 +12,7 @@ from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import cross_validate, GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler, PolynomialFeatures
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, f_regression, mutual_info_regression
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
@@ -146,6 +146,33 @@ def train(df):
     en_rmse = -cv_results_en['test_neg_root_mean_squared_error'].mean()
     print(f"Best ElasticNet R2: {en_r2:.4f} (alpha={en_grid.best_params_['model__alpha']}, l1_ratio={en_grid.best_params_['model__l1_ratio']})")
 
+    # 1d. Ridge with polynomial interactions
+    poly_pipe = Pipeline([
+        ('variance', VarianceThreshold(threshold=0.01)),
+        ('select', SelectKBest(f_regression)),
+        ('poly', PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)),
+        ('scaler', RobustScaler()),
+        ('model', Ridge())
+    ])
+    poly_param_grid = {
+        'model__alpha': [0.01, 0.1, 1.0, 10.0, 100.0],
+        'select__k': [8, 10, 12, 15]
+    }
+    poly_grid = GridSearchCV(poly_pipe, poly_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
+    poly_grid.fit(X, y)
+    best_poly = poly_grid.best_estimator_
+    
+    cv_results_poly = cross_validate(
+        best_poly, X, y,
+        cv=tscv,
+        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+        return_train_score=False
+    )
+    poly_r2 = cv_results_poly['test_r2'].mean()
+    poly_mae = -cv_results_poly['test_neg_mean_absolute_error'].mean()
+    poly_rmse = -cv_results_poly['test_neg_root_mean_squared_error'].mean()
+    print(f"Best Ridge(Poly) R2: {poly_r2:.4f} (alpha={poly_grid.best_params_['model__alpha']}, k={poly_grid.best_params_['select__k']})")
+
     # 2. RandomForest
     print('\nTuning RandomForest...')
     rf_pipe = Pipeline([
@@ -241,6 +268,7 @@ def train(df):
         'Ridge': (best_ridge, ridge_r2),
         'Ridge(MI)': (best_ridge_mi, ridge_mi_r2),
         'ElasticNet': (best_en, en_r2),
+        'Ridge(Poly)': (best_poly, poly_r2),
         'RandomForest': (best_rf, rf_r2),
         'XGBoost': (best_xgb, xgb_r2),
         'LightGBM': (best_lgbm, lgbm_r2)
@@ -273,6 +301,12 @@ def train(df):
                 "r2_mean": en_r2,
                 "mae": en_mae,
                 "rmse": en_rmse
+            },
+            {
+                "name": "Ridge(Poly)",
+                "r2_mean": poly_r2,
+                "mae": poly_mae,
+                "rmse": poly_rmse
             },
             {
                 "name": "Random Forest",
@@ -318,6 +352,7 @@ def train(df):
     save_artifact(best_ridge, 'Ridge')
     save_artifact(best_ridge_mi, 'Ridge_MI')
     save_artifact(best_en, 'ElasticNet')
+    save_artifact(best_poly, 'Ridge_Poly')
     save_artifact(best_rf, 'Random_Forest')
     save_artifact(best_xgb, 'XGBoost')
     save_artifact(best_lgbm, 'LightGBM')
