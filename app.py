@@ -349,7 +349,7 @@ def _build_dashboard_data():
         'low_inflation': low_inflation,
         'low_date': low_date,
         'trend': 'Rising' if inflation_change > 0 else 'Declining',
-        'num_features': len(COLUMN_MAP),
+        'num_features': len(FEATURE_COLUMNS) if FEATURE_COLUMNS else len(COLUMN_MAP),
         'num_observations': len(df),
         'date_range': f"{df['Date'].dt.year.min()} - {df['Date'].dt.year.max()}",
         'inflation_history': {
