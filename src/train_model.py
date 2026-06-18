@@ -13,6 +13,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import cross_validate, GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
 
@@ -66,6 +67,7 @@ def train(df):
     # 1. Ridge
     print('\nTuning Ridge...')
     ridge_pipe = Pipeline([
+        ('variance', VarianceThreshold(threshold=0.01)),
         ('scaler', RobustScaler()),
         ('model', Ridge())
     ])
@@ -88,6 +90,7 @@ def train(df):
     # 2. RandomForest
     print('\nTuning RandomForest...')
     rf_pipe = Pipeline([
+        ('variance', VarianceThreshold(threshold=0.01)),
         ('scaler', RobustScaler()),
         ('model', RandomForestRegressor(random_state=42))
     ])
@@ -114,6 +117,7 @@ def train(df):
     # 3. XGBoost
     print('\nTuning XGBoost...')
     xgb_pipe = Pipeline([
+        ('variance', VarianceThreshold(threshold=0.01)),
         ('scaler', RobustScaler()),
         ('model', XGBRegressor(random_state=42))
     ])
@@ -142,6 +146,7 @@ def train(df):
     try:
         from lightgbm import LGBMRegressor
         lgbm_pipe = Pipeline([
+            ('variance', VarianceThreshold(threshold=0.01)),
             ('scaler', RobustScaler()),
             ('model', LGBMRegressor(random_state=42, verbose=-1))
         ])
