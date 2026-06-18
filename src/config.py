@@ -11,7 +11,6 @@ COLUMN_MAP = {
     'interest_rate': 'INTDSRINM193N',
     'usd_inr': 'DEXINUS',
     'brent_crude': 'Average of DCOILBRENTEU',
-    'gdp_proxy': 'MKTGDPINA646NWDB'
 }
 
 # File paths (relative to project root)
