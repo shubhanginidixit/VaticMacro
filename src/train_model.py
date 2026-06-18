@@ -69,7 +69,7 @@ def train(df):
         ('scaler', RobustScaler()),
         ('model', Ridge())
     ])
-    ridge_param_grid = {'model__alpha': [0.1, 1.0, 10.0, 100.0]}
+    ridge_param_grid = {'model__alpha': [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 500.0]}
     ridge_grid = GridSearchCV(ridge_pipe, ridge_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
     ridge_grid.fit(X, y)
     best_ridge = ridge_grid.best_estimator_
