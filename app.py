@@ -648,7 +648,6 @@ def _get_dynamic_defaults():
                 'interest_rate': float(latest.get(COLUMN_MAP['interest_rate'], 6.5)),
                 'usd_inr': float(latest.get(COLUMN_MAP['usd_inr'], 83.42)),
                 'brent_crude': float(latest.get(COLUMN_MAP['brent_crude'], 80.92)),
-                'gdp_proxy': float(latest.get(COLUMN_MAP['gdp_proxy'], 3500.0))
             }
     except Exception:
         pass
@@ -657,7 +656,6 @@ def _get_dynamic_defaults():
         'interest_rate': 5.25,
         'usd_inr': 95.40,
         'brent_crude': 107.00,
-        'gdp_proxy': 3909.89
     }
 
 def _run_prediction(form_data):
@@ -671,7 +669,6 @@ def _run_prediction(form_data):
     val_ir = float(form_data.get('interest_rate', default_values['interest_rate']))
     val_usd = float(form_data.get('usd_inr', default_values['usd_inr']))
     val_brent = float(form_data.get('brent_crude', default_values['brent_crude']))
-    val_gdp = float(form_data.get('gdp_proxy', default_values['gdp_proxy']))
     raw_date = form_data.get('scenario_date', '')
 
     current_values = {
@@ -679,7 +676,6 @@ def _run_prediction(form_data):
         'interest_rate': val_ir,
         'usd_inr': val_usd,
         'brent_crude': val_brent,
-        'gdp_proxy': val_gdp
     }
 
     prediction = None
@@ -703,7 +699,6 @@ def _run_prediction(form_data):
             new_row[COLUMN_MAP['brent_crude']] = val_brent
             new_row[COLUMN_MAP['usd_inr']] = val_usd
             new_row[COLUMN_MAP['interest_rate']] = val_ir
-            new_row[COLUMN_MAP['gdp_proxy']] = val_gdp
             new_row[COLUMN_MAP['wpi']] = val_wpi
 
             # Build prediction features
