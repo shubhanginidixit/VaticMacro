@@ -74,7 +74,7 @@ def train(df):
     ])
     ridge_param_grid = {
         'model__alpha': [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 500.0],
-        'select__k': [10, 15, 20, 25, 'all']
+        'select__k': [5, 8, 10, 12, 15, 18, 20, 25, 'all']
     }
 
     # 1b. Ridge with mutual_info scoring
