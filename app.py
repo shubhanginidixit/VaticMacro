@@ -341,7 +341,6 @@ def _build_dashboard_data():
         'usdinr_change': round(_pct_change(latest[COLUMN_MAP['usd_inr']], past_30[COLUMN_MAP['usd_inr']]), 2),
         'brent_value': round(latest[COLUMN_MAP['brent_crude']], 2),
         'brent_change': round(_pct_change(latest[COLUMN_MAP['brent_crude']], past_30[COLUMN_MAP['brent_crude']]), 2),
-        'gdp_growth': round(_pct_change(latest[COLUMN_MAP['gdp_proxy']], past_365[COLUMN_MAP['gdp_proxy']]), 2),
         'avg_inflation': avg_inflation,
         'peak_inflation': peak_inflation,
         'peak_date': peak_date,
@@ -370,7 +369,6 @@ def _build_analysis_data():
         COLUMN_MAP['interest_rate']: 'Interest Rate',
         COLUMN_MAP['usd_inr']: 'USD/INR',
         COLUMN_MAP['brent_crude']: 'Brent Crude',
-        COLUMN_MAP['gdp_proxy']: 'GDP Proxy'
     }
     available_corr_keys = [c for c in corr_cols.keys() if c in df.columns]
     if available_corr_keys:
