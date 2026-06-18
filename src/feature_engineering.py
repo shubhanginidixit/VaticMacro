@@ -14,8 +14,8 @@ KEEP_COLUMNS = [
 
 def create_features(df):
     """
-    Create engineered features using percentage changes and ratios.
-    Reduced feature set: ~20-25 features instead of 100+.
+    Create engineered features using percentage changes, ratios, and z-scores.
+    ~28 features from 7 indicators (5 base + 2 FRED) + calendar + AR lags.
     """
     df = df.copy()
 
@@ -37,6 +37,7 @@ def create_features(df):
         cpi_pct = df['CPI'].pct_change(12) * 100
         df['inflation_lag_1m'] = cpi_pct.shift(1)
         df['inflation_lag_3m'] = cpi_pct.shift(3)
+        df['inflation_lag_6m'] = cpi_pct.shift(6)
         df['inflation_lag_12m'] = cpi_pct.shift(12)
 
     # Percentage changes for key indicators (1m and 12m only)
@@ -56,6 +57,21 @@ def create_features(df):
         df['oil_inr_ratio'] = df['Average of DCOILBRENTEU'] / df['DEXINUS']
         df['oil_inr_pct_1m'] = df['oil_inr_ratio'].pct_change(1) * 100
 
+    # Industrial Production: z-score (deviation from 24m trend) and 6m smoothed level
+    if 'INDPRINTO01GYSAM' in df.columns:
+        iip = df['INDPRINTO01GYSAM']
+        iip_mean_24m = iip.rolling(24, min_periods=12).mean()
+        iip_std_24m = iip.rolling(24, min_periods=12).std()
+        df['iip_zscore_24m'] = (iip - iip_mean_24m) / iip_std_24m.clip(lower=1.0)
+        df['iip_smooth_6m'] = iip.rolling(6).mean()
+
+    # Trade Balance: pct change of 3m moving average (smooth out monthly noise)
+    if 'XTNTVA01INM667N' in df.columns:
+        tb = df['XTNTVA01INM667N']
+        tb_ma3 = tb.rolling(3).mean()
+        df['trade_ma3_pct_12m'] = tb_ma3.pct_change(12) * 100
+        df['trade_ma3_pct_1m'] = tb_ma3.pct_change(1) * 100
+
     # Clip extreme values (wider range to preserve crisis-period signal)
     pct_cols = [c for c in df.columns if 'pct' in c or 'lag_' in c or 'rolling_' in c]
     if pct_cols:
@@ -67,7 +83,10 @@ def create_features(df):
 
     df = df.dropna().reset_index(drop=True)
 
-    # Drop raw indicator columns
-    df = df.drop(columns=indicator_cols, errors='ignore')
+    # Drop raw indicator columns (keep only engineered features + Date + target)
+    known_raw = ['INDCPIALLMINMEI', 'WPIATT01INM661N', 'INTDSRINM193N', 'DEXINUS',
+                 'Average of DCOILBRENTEU', 'INDPRINTO01GYSAM', 'XTNTVA01INM667N',
+                 'INDIRLTLT01STM', 'INDLOLITOAASTSAM', 'MABMM301INM189N']
+    df = df.drop(columns=[c for c in known_raw if c in df.columns], errors='ignore')
 
     return df

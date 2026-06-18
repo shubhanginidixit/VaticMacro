@@ -58,7 +58,7 @@ def train(df):
     
     print(f"Training on 2000-2024 ({len(training_df)} rows)")
     
-    X = training_df.drop(['Date', 'CPI', 'target_future_inflation'], axis=1)
+    X = training_df.drop(['Date', 'CPI', 'target_future_inflation'], axis=1, errors='ignore')
     y = training_df['target_future_inflation']
 
     tscv = TimeSeriesSplit(n_splits=5)
@@ -245,7 +245,7 @@ def train(df):
     # Save holdout
     if not holdout_df.empty:
         # Evaluate Best Model on Holdout
-        X_test = holdout_df.drop(['Date', 'CPI', 'target_future_inflation'], axis=1)
+        X_test = holdout_df.drop(['Date', 'CPI', 'target_future_inflation'], axis=1, errors='ignore')
         y_test = holdout_df['target_future_inflation']
         y_pred = best_pipeline.predict(X_test)
         holdout_r2 = r2_score(y_test, y_pred)
