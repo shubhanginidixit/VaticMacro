@@ -38,9 +38,7 @@ def train(df):
     df = df.sort_values('Date').reset_index(drop=True)
     
     # Target creation: We want to predict YoY inflation 1 month from now.
-    # First, calculate current YoY inflation for all rows.
-    # Since data is strictly monthly, YoY inflation is just a 12-month percentage change.
-    df['current_inflation_yoy'] = df['CPI'].pct_change(12) * 100
+    # current_inflation_yoy is already provided by feature_engineering.py
 
     # FUTURE TARGET: Shift the current_inflation_yoy backward by 1 month
     # This means for a row today, the target is the inflation 1 month in the future
@@ -117,14 +115,12 @@ def train(df):
     print('\nTuning XGBoost...')
     xgb_pipe = Pipeline([
         ('scaler', RobustScaler()),
-        ('model', XGBRegressor(random_state=42, verbosity=0))
+        ('model', XGBRegressor(random_state=42))
     ])
     xgb_param_grid = {
         'model__n_estimators': [100, 200],
-        'model__learning_rate': [0.01, 0.05, 0.1],
-        'model__max_depth': [3, 5],
-        'model__subsample': [0.8],
-        'model__reg_alpha': [0, 0.1]
+        'model__learning_rate': [0.05, 0.1],
+        'model__max_depth': [3, 5, 7]
     }
     xgb_grid = GridSearchCV(xgb_pipe, xgb_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
     xgb_grid.fit(X, y)
@@ -143,32 +139,38 @@ def train(df):
 
     # 4. LightGBM
     print('\nTuning LightGBM...')
-    from lightgbm import LGBMRegressor
-    lgbm_pipe = Pipeline([
-        ('scaler', RobustScaler()),
-        ('model', LGBMRegressor(random_state=42, verbosity=-1))
-    ])
-    lgbm_param_grid = {
-        'model__n_estimators': [100, 200],
-        'model__learning_rate': [0.05, 0.1],
-        'model__max_depth': [3, 5],
-        'model__num_leaves': [15, 31],
-        'model__reg_alpha': [0, 0.1]
-    }
-    lgbm_grid = GridSearchCV(lgbm_pipe, lgbm_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
-    lgbm_grid.fit(X, y)
-    best_lgbm = lgbm_grid.best_estimator_
-    
-    cv_results = cross_validate(
-        best_lgbm, X, y,
-        cv=tscv,
-        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
-        return_train_score=False
-    )
-    lgbm_r2 = cv_results['test_r2'].mean()
-    lgbm_mae = -cv_results['test_neg_mean_absolute_error'].mean()
-    lgbm_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
-    print(f"Best LightGBM R2: {lgbm_r2:.4f}")
+    try:
+        from lightgbm import LGBMRegressor
+        lgbm_pipe = Pipeline([
+            ('scaler', RobustScaler()),
+            ('model', LGBMRegressor(random_state=42, verbose=-1))
+        ])
+        lgbm_param_grid = {
+            'model__n_estimators': [100, 200],
+            'model__learning_rate': [0.05, 0.1],
+            'model__num_leaves': [15, 31],
+            'model__max_depth': [-1, 5, 10]
+        }
+        lgbm_grid = GridSearchCV(lgbm_pipe, lgbm_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
+        lgbm_grid.fit(X, y)
+        best_lgbm = lgbm_grid.best_estimator_
+        
+        cv_results = cross_validate(
+            best_lgbm, X, y,
+            cv=tscv,
+            scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+            return_train_score=False
+        )
+        lgbm_r2 = cv_results['test_r2'].mean()
+        lgbm_mae = -cv_results['test_neg_mean_absolute_error'].mean()
+        lgbm_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
+        print(f"Best LightGBM R2: {lgbm_r2:.4f}")
+    except ImportError:
+        print("LightGBM not installed, skipping.")
+        best_lgbm = best_rf
+        lgbm_r2 = -99.0
+        lgbm_mae = 99.0
+        lgbm_rmse = 99.0
 
     # Choose best model
     candidates = {
