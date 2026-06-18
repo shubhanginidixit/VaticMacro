@@ -176,7 +176,7 @@ try:
                         "Predictions may be unreliable.\n" + mismatch_detail
                     )
                     print(f"\n{'='*60}")
-                    print("⚠  MODEL ENVIRONMENT MISMATCH")
+                    print("[!] MODEL ENVIRONMENT MISMATCH")
                     print(mismatch_detail)
                     print(f"{'='*60}\n")
                 else:
