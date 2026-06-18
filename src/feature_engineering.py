@@ -15,7 +15,7 @@ KEEP_COLUMNS = [
 def create_features(df):
     """
     Create engineered features using percentage changes, ratios, and z-scores.
-    ~28 features from 7 indicators (5 base + 2 FRED) + calendar + AR lags.
+    35 features from 7 indicators (5 base + 2 FRED) + calendar + AR lags + momentum/volatility.
     """
     df = df.copy()
 

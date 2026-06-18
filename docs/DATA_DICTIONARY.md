@@ -100,7 +100,7 @@ A joblib-serialized dictionary containing:
 ```python
 {
     'pipeline': Pipeline([...]),      # RobustScaler + RidgeCV
-    'feature_columns': [...],         # 24 feature names used
+    'feature_columns': [...],         # 34 feature names used
     'best_model_choice': 'RidgeCV',   # Model name
     'model_name': 'RidgeCV'           # Display name
 }
