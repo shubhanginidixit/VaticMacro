@@ -13,7 +13,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import cross_validate, GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
-from sklearn.feature_selection import VarianceThreshold, SelectKBest, f_regression
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, f_regression, mutual_info_regression
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
 
@@ -76,6 +76,18 @@ def train(df):
         'model__alpha': [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 500.0],
         'select__k': [10, 15, 20, 25, 'all']
     }
+
+    # 1b. Ridge with mutual_info scoring
+    ridge_mi_pipe = Pipeline([
+        ('variance', VarianceThreshold(threshold=0.01)),
+        ('select', SelectKBest(mutual_info_regression)),
+        ('scaler', RobustScaler()),
+        ('model', Ridge())
+    ])
+    ridge_mi_param_grid = {
+        'model__alpha': [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0, 500.0],
+        'select__k': [10, 15, 20, 25, 'all']
+    }
     ridge_grid = GridSearchCV(ridge_pipe, ridge_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
     ridge_grid.fit(X, y)
     best_ridge = ridge_grid.best_estimator_
@@ -90,6 +102,22 @@ def train(df):
     ridge_mae = -cv_results['test_neg_mean_absolute_error'].mean()
     ridge_rmse = -cv_results['test_neg_root_mean_squared_error'].mean()
     print(f"Best Ridge R2: {ridge_r2:.4f} (alpha={ridge_grid.best_params_['model__alpha']})")
+
+    # 1b. Ridge with mutual_info scoring
+    ridge_mi_grid = GridSearchCV(ridge_mi_pipe, ridge_mi_param_grid, cv=tscv, scoring='r2', n_jobs=-1)
+    ridge_mi_grid.fit(X, y)
+    best_ridge_mi = ridge_mi_grid.best_estimator_
+    
+    cv_results_mi = cross_validate(
+        best_ridge_mi, X, y,
+        cv=tscv,
+        scoring=['r2', 'neg_mean_absolute_error', 'neg_root_mean_squared_error'],
+        return_train_score=False
+    )
+    ridge_mi_r2 = cv_results_mi['test_r2'].mean()
+    ridge_mi_mae = -cv_results_mi['test_neg_mean_absolute_error'].mean()
+    ridge_mi_rmse = -cv_results_mi['test_neg_root_mean_squared_error'].mean()
+    print(f"Best Ridge(MI) R2: {ridge_mi_r2:.4f} (alpha={ridge_mi_grid.best_params_['model__alpha']}, k={ridge_mi_grid.best_params_['select__k']})")
 
     # 2. RandomForest
     print('\nTuning RandomForest...')
@@ -184,6 +212,7 @@ def train(df):
     # Choose best model
     candidates = {
         'Ridge': (best_ridge, ridge_r2),
+        'Ridge(MI)': (best_ridge_mi, ridge_mi_r2),
         'RandomForest': (best_rf, rf_r2),
         'XGBoost': (best_xgb, xgb_r2),
         'LightGBM': (best_lgbm, lgbm_r2)
@@ -204,6 +233,12 @@ def train(df):
                 "r2_mean": ridge_r2,
                 "mae": ridge_mae,
                 "rmse": ridge_rmse
+            },
+            {
+                "name": "Ridge(MI)",
+                "r2_mean": ridge_mi_r2,
+                "mae": ridge_mi_mae,
+                "rmse": ridge_mi_rmse
             },
             {
                 "name": "Random Forest",
@@ -247,6 +282,7 @@ def train(df):
 
     save_artifact(best_pipeline, chosen_name, best=True)
     save_artifact(best_ridge, 'Ridge')
+    save_artifact(best_ridge_mi, 'Ridge_MI')
     save_artifact(best_rf, 'Random_Forest')
     save_artifact(best_xgb, 'XGBoost')
     save_artifact(best_lgbm, 'LightGBM')
