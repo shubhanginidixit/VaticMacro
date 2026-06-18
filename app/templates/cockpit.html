@@ -690,10 +690,6 @@ async function loadPredictiveSandbox(container) {
                 <input type="number" id="inp-brent" class="scenario-input" step="0.5" value="${defs.brent_crude}"/>
               </div>
               <div class="flex items-center justify-between">
-                <label class="text-sm" style="color: var(--text-secondary);">GDP Proxy</label>
-                <input type="number" id="inp-gdp" class="scenario-input" step="0.1" value="${defs.gdp_proxy}"/>
-              </div>
-              <div class="flex items-center justify-between">
                 <label class="text-sm" style="color: var(--text-secondary);">Scenario Date</label>
                 <input type="date" id="inp-date" class="scenario-input" style="width: 150px;"/>
               </div>
@@ -771,9 +767,9 @@ async function loadPredictiveSandbox(container) {
 
     // Wire presets
     const presets = {
-      current: { wpi: 136.30, ir: 6.50, usd: 83.42, brent: 80.92, gdp: 3500.0 },
-      oil:     { wpi: 142.10, ir: 6.50, usd: 85.10, brent: 110.00, gdp: 3400.0 },
-      rate:    { wpi: 132.50, ir: 7.50, usd: 82.50, brent: 75.00, gdp: 3300.0 }
+      current: { wpi: 167.00, ir: 5.25, usd: 95.40, brent: 107.00 },
+      oil:     { wpi: 168.50, ir: 5.25, usd: 96.10, brent: 135.00 },
+      rate:    { wpi: 165.00, ir: 5.75, usd: 94.50, brent: 105.00 }
     };
 
     document.querySelectorAll('#preset-btns .preset-btn').forEach(btn => {
@@ -786,7 +782,6 @@ async function loadPredictiveSandbox(container) {
           document.getElementById('inp-ir').value = p.ir;
           document.getElementById('inp-usd').value = p.usd;
           document.getElementById('inp-brent').value = p.brent;
-          document.getElementById('inp-gdp').value = p.gdp;
         }
       });
     });
@@ -854,7 +849,6 @@ async function runPrediction() {
       interest_rate: document.getElementById('inp-ir').value,
       usd_inr: document.getElementById('inp-usd').value,
       brent_crude: document.getElementById('inp-brent').value,
-      gdp_proxy: document.getElementById('inp-gdp').value,
       scenario_date: document.getElementById('inp-date').value
     };
 
