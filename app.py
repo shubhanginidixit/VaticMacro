@@ -453,16 +453,6 @@ def _build_models_data():
     best_model_name = metrics_data.get("best_model", MODEL_NAME)
     best_model_key = str(best_model_name).lower()
 
-    try:
-        if os.path.exists(os.path.join('models', 'ridge.pkl')):
-            best_model_name = 'Ridge'
-            best_model_key = 'ridge'
-        elif os.path.exists(os.path.join('models', 'linear_regression.pkl')):
-            best_model_name = 'Linear Regression'
-            best_model_key = 'linear_regression'
-    except Exception:
-        pass
-
     # Build normalized list of model metrics regardless of metrics.json layout
     models_metrics = []
     if isinstance(metrics_data.get("metrics"), list):
